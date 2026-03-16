@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#060e15">
+<title>VALORANT Agent Randomizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+<!-- ═══════════════════════════════════════════════════════════════
+  🔧 STEP-BY-STEP FIREBASE SETUP — DO THIS BEFORE UPLOADING
+  ═══════════════════════════════════════════════════════════════
+
+  STEP 1 — Create Firebase Project
+  ─────────────────────────────────
+  • Go to https://console.firebase.google.com
+  • Click "Add project"
+  • Name it anything (e.g. "val-randomizer")
+  • Disable Google Analytics → click "Create project"
+  • Wait for it to finish, then click "Continue"
+
+  STEP 2 — Register your Web App
+  ───────────────────────────────
+  • In the project overview, click the "</>" (Web) icon
+  • Give it a nickname (e.g. "val-app")
+  • Do NOT enable Firebase Hosting (we use Cloudflare)
+  • Click "Register app"
+  • You will see a block of code like this:
+      const firebaseConfig = {
+        apiKey: "AIzaSy...",
+        authDomain: "your-app.firebaseapp.com",
+        ...
+      };
+  • COPY those values and PASTE them into the firebaseConfig
+    object further down in this file (search for YOUR_API_KEY)
+
+  STEP 3 — Enable Authentication
+  ────────────────────────────────
+  • In Firebase Console → left menu → "Authentication"
+  • Click "Get started"
+  • Click "Email/Password" → Enable → Save
+  • Click "Google" → Enable → add your support email → Save
+
+  STEP 4 — Create Firestore Database
+  ────────────────────────────────────
+  • In Firebase Console → left menu → "Firestore Database"
+  • Click "Create database"
+  • Choose "Start in test mode" → Next
+  • Pick any region (e.g. asia-south1 for India) → Enable
+  • Wait for it to provision
+
+  STEP 5 — Add Firestore Security Rules
+  ───────────────────────────────────────
+  • In Firestore → click "Rules" tab
+  • Replace everything with this and click "Publish":
+
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+      match /users/{userId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+
+  STEP 6 — Add Authorised Domain (after Cloudflare deploy)
+  ──────────────────────────────────────────────────────────
+  • In Firebase → Authentication → Settings → Authorised domains
+  • Click "Add domain"
+  • Add your Cloudflare Pages URL: e.g. val-randomizer.pages.dev
+
+  ✅ DONE — Now upload this file as index.html to GitHub
+  ═══════════════════════════════════════════════════════════════ -->
+
+<style>
+:root{
+  --red:#ff4655;--red-dim:rgba(255,70,85,0.13);
+  --white:#ece8e1;--off:#b0aaa3;--gray:#4d5660;
+  --dark:#0d1a24;--darker:#060e15;
+  --card:#0f1d29;--card2:#152230;
+  --gold:#c9a84c;--teal:#00c8b8;--purple:#a855f7;--amber:#f59e0b;
+  --green:#4ade80;--border:rgba(255,255,255,0.07);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--darker);color:var(--white);font-family:'Barlow Condensed',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:9999;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,70,85,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,70,85,0.018) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;z-index:0;}
+
+/* ── LOADING SCREEN ── */
+#loadingScreen{position:fixed;inset:0;background:var(--darker);z-index:5000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;transition:opacity 0.4s;}
+#loadingScreen.hidden{opacity:0;pointer-events:none;}
+.load-logo{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:6px;color:var(--white);}
+.load-logo em{color:var(--red);}
+.load-bar{width:200px;height:2px;background:var(--card2);overflow:hidden;}
+.load-fill{height:100%;background:var(--red);animation:loadFill 1.5s ease forwards;}
+@keyframes loadFill{from{width:0}to{width:100%}}
+.load-text{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--gray);}
+
+/* ── AUTH SCREEN ── */
+#authScreen{position:fixed;inset:0;background:var(--darker);z-index:4000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0;}
+#authScreen.hidden{display:none;}
+.auth-wrap{width:min(420px,92vw);position:relative;z-index:1;}
+.auth-logo{text-align:center;margin-bottom:32px;}
+.auth-logo h1{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:6px;line-height:1;}
+.auth-logo h1 em{color:var(--red);font-style:normal;}
+.auth-logo p{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:4px;color:var(--gray);margin-top:6px;}
+.auth-card{background:var(--card);border:1px solid var(--border);padding:32px;}
+.auth-tabs{display:flex;margin-bottom:24px;border-bottom:1px solid var(--border);}
+.auth-tab{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;padding:8px 20px;background:transparent;border:none;color:var(--gray);cursor:pointer;transition:all 0.2s;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.auth-tab.active{color:var(--red);border-bottom-color:var(--red);}
+.auth-field{margin-bottom:14px;}
+.auth-label{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--red);margin-bottom:5px;display:block;}
+.auth-input{width:100%;background:var(--darker);border:1px solid var(--border);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:600;letter-spacing:1px;padding:10px 14px;outline:none;transition:border-color 0.2s;}
+.auth-input:focus{border-color:var(--red);box-shadow:0 0 0 1px var(--red);}
+.auth-input::placeholder{color:rgba(255,255,255,0.2);font-weight:400;}
+.auth-btn{width:100%;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:4px;padding:13px;background:var(--red);color:var(--white);border:none;cursor:pointer;transition:all 0.2s;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);margin-top:4px;}
+.auth-btn:hover{background:#ff6070;box-shadow:0 4px 18px rgba(255,70,85,0.4);}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed;}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--gray);}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.google-btn{width:100%;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:2px;padding:11px;background:transparent;color:var(--white);border:1px solid var(--border);cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.google-btn:hover{border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.04);}
+.google-icon{width:16px;height:16px;}
+.auth-error{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--red);background:rgba(255,70,85,0.1);border:1px solid rgba(255,70,85,0.3);padding:8px 12px;margin-top:12px;display:none;}
+.auth-error.show{display:block;}
+.auth-forgot{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--gray);cursor:pointer;text-align:right;margin-top:-8px;margin-bottom:12px;}
+.auth-forgot:hover{color:var(--teal);}
+
+/* ── MAIN APP ── */
+#app{display:none;}
+#app.visible{display:block;}
+.wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:28px 18px 100px;}
+
+/* ── HEADER ── */
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:30px;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;gap:12px;}
+.hdr-left{}
+.hdr-eye{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:4px;color:var(--red);margin-bottom:3px;}
+.hdr h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(30px,5.5vw,58px);letter-spacing:5px;line-height:1;}
+.hdr h1 em{color:var(--red);font-style:normal;}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+
+/* ── USER PILL ── */
+.user-pill{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--border);padding:5px 10px 5px 5px;cursor:pointer;transition:border-color 0.15s;position:relative;}
+.user-pill:hover{border-color:rgba(255,255,255,0.18);}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;overflow:hidden;flex-shrink:0;}
+.user-avatar img{width:100%;height:100%;object-fit:cover;}
+.user-name{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--white);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.user-menu{position:absolute;top:calc(100% + 4px);right:0;background:var(--dark);border:1px solid var(--border);min-width:160px;z-index:100;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.5);}
+.user-pill:hover .user-menu,.user-menu:hover{display:block;}
+.user-menu-item{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:9px 14px;cursor:pointer;transition:background 0.1s;color:var(--off);border-bottom:1px solid var(--border);}
+.user-menu-item:last-child{border-bottom:none;}
+.user-menu-item:hover{background:rgba(255,255,255,0.05);color:var(--white);}
+.user-menu-item.danger:hover{background:rgba(255,70,85,0.1);color:var(--red);}
+.sync-badge{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 8px;border:1px solid;display:flex;align-items:center;gap:4px;}
+.sync-badge.synced{border-color:var(--green);color:var(--green);}
+.sync-badge.syncing{border-color:var(--amber);color:var(--amber);}
+.sync-badge.offline{border-color:var(--gray);color:var(--gray);}
+
+/* ── VIEWS ── */
+.view{display:none;}
+.view.active{display:block;animation:fadeUp 0.28s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.hdr-nav{display:flex;gap:4px;flex-wrap:wrap;}
+.nav-tab{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;padding:7px 13px;border:1px solid var(--border);background:transparent;color:var(--gray);cursor:pointer;transition:all 0.2s;text-transform:uppercase;}
+.nav-tab:hover{color:var(--white);border-color:rgba(255,255,255,0.2);}
+.nav-tab.active{background:var(--red);color:var(--white);border-color:var(--red);}
+.sh{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.st{font-family:'Bebas Neue',sans-serif;font-size:21px;letter-spacing:3px;color:var(--red);}
+.ss{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--gray);letter-spacing:2px;}
+
+/* ── MY PROFILE VIEW ── */
+.my-profile-wrap{display:grid;grid-template-columns:280px 1fr;gap:20px;}
+@media(max-width:700px){.my-profile-wrap{grid-template-columns:1fr;}}
+.my-profile-sidebar{display:flex;flex-direction:column;gap:12px;}
+.my-profile-card{background:var(--card);border:1px solid var(--border);padding:20px;text-align:center;}
+.my-avatar-wrap{position:relative;display:inline-block;margin-bottom:14px;}
+.my-avatar{width:80px;height:80px;border-radius:50%;background:var(--card2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;margin:0 auto;cursor:pointer;transition:border-color 0.15s;}
+.my-avatar:hover{border-color:var(--gold);}
+.my-avatar img{width:100%;height:100%;object-fit:cover;}
+.my-avatar-edit{position:absolute;bottom:0;right:0;width:22px;height:22px;background:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;}
+.my-avatar-input{display:none;}
+.my-display-name{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:3px;margin-bottom:3px;}
+.my-email{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--gray);letter-spacing:1px;margin-bottom:12px;word-break:break-all;}
+.my-uid{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--gray);letter-spacing:1px;background:var(--card2);padding:4px 8px;margin-bottom:14px;}
+
+.profile-section{background:var(--card);border:1px solid var(--border);padding:16px;}
+.profile-section h3{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--red);margin-bottom:14px;text-transform:uppercase;}
+.field-row{margin-bottom:12px;}
+.field-label{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--gray);margin-bottom:4px;display:block;}
+.field-input{width:100%;background:var(--darker);border:1px solid var(--border);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;padding:8px 12px;outline:none;transition:border-color 0.2s;}
+.field-input:focus{border-color:var(--red);}
+.field-select{width:100%;background:var(--darker);border:1px solid var(--border);color:var(--white);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:7px 10px;outline:none;cursor:pointer;}
+.field-select option{background:var(--dark);}
+.role-pick{display:flex;gap:4px;flex-wrap:wrap;}
+.role-pick-btn{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:4px 9px;border:1px solid var(--border);background:transparent;color:var(--gray);cursor:pointer;transition:all 0.14s;}
+.role-pick-btn.sel-duelist{background:rgba(255,70,85,0.18);border-color:#ff4655;color:#ff4655;}
+.role-pick-btn.sel-initiator{background:rgba(0,200,184,0.18);border-color:#00c8b8;color:#00c8b8;}
+.role-pick-btn.sel-controller{background:rgba(168,85,247,0.18);border-color:#a855f7;color:#a855f7;}
+.role-pick-btn.sel-sentinel{background:rgba(245,158,11,0.18);border-color:#f59e0b;color:#f59e0b;}
+.role-pick-btn.sel-any{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.3);color:var(--white);}
+.fav-agent-grid{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.fav-agent-btn{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;padding:4px 9px;border:1px solid var(--border);background:transparent;cursor:pointer;transition:all 0.14s;display:flex;align-items:center;gap:3px;}
+.fav-agent-btn:hover{border-color:rgba(255,255,255,0.3);}
+.fav-agent-btn.fav{border-color:var(--gold);background:rgba(201,168,76,0.12);color:var(--gold);}
+.save-profile-btn{width:100%;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;padding:10px;background:var(--red);color:var(--white);border:none;cursor:pointer;transition:all 0.2s;clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);}
+.save-profile-btn:hover{background:#ff6070;box-shadow:0 4px 16px rgba(255,70,85,0.4);}
+
+/* ── SQUAD PROFILES (other players) ── */
+.squad-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:20px;}
+.squad-card{background:var(--card);border:1px solid var(--border);padding:14px;transition:border-color 0.15s;}
+.squad-card:hover{border-color:rgba(255,255,255,0.12);}
+.sq-head{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+.sq-avatar{width:34px;height:34px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:15px;overflow:hidden;flex-shrink:0;}
+.sq-avatar img{width:100%;height:100%;object-fit:cover;}
+.sq-name{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;line-height:1;}
+.sq-role{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;}
+.sq-rank{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--gray);}
+.sq-favs{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;}
+.sq-fav{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;padding:2px 5px;border:1px solid currentColor;}
+
+/* ── MAP GRID ── */
+.maps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:8px;margin-bottom:20px;}
+.map-tile{position:relative;height:78px;border:1px solid var(--border);background:var(--card);cursor:pointer;overflow:hidden;transition:all 0.16s;}
+.map-tile::before{content:'';position:absolute;inset:0;background:var(--mc,var(--red-dim));opacity:0;transition:opacity 0.2s;}
+.map-tile:hover{border-color:rgba(255,70,85,0.4);transform:translateY(-2px);}
+.map-tile:hover::before{opacity:.7;}
+.map-tile.sel{border-color:var(--red);box-shadow:0 0 14px rgba(255,70,85,0.18);}
+.map-tile.sel::before{opacity:1;}
+.map-tile.isnew{border-color:rgba(201,168,76,0.3);}
+.map-tile.isnew.sel{border-color:var(--gold);}
+.map-chk{position:absolute;top:5px;left:5px;width:13px;height:13px;background:var(--red);display:none;align-items:center;justify-content:center;font-size:7px;}
+.map-tile.sel .map-chk{display:flex;}
+.new-badge{position:absolute;top:4px;right:4px;font-family:'Share Tech Mono',monospace;font-size:7px;background:var(--gold);color:var(--darker);padding:2px 4px;font-weight:700;}
+.map-icon-el{position:absolute;top:6px;right:7px;font-size:16px;opacity:.25;}
+.map-tile.isnew .map-icon-el{right:22px;}
+.map-info{position:absolute;bottom:0;left:0;right:0;padding:6px 9px;}
+.map-nm{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;line-height:1;}
+.map-tile.isnew .map-nm{color:var(--gold);}
+.map-tp{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--gray);letter-spacing:1px;}
+
+/* ── MAP BANNER ── */
+.map-banner{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--red);padding:11px 15px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.map-banner.gold{border-left-color:var(--gold);}
+.bn-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;display:flex;align-items:center;gap:8px;}
+.bn-meta{display:flex;flex-direction:column;gap:3px;}
+.bn-src{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--gold);}
+.bn-roles{display:flex;gap:4px;flex-wrap:wrap;}
+.rtag{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:2px 6px;border:1px solid currentColor;text-transform:uppercase;}
+
+/* ── PLAYERS ── */
+.play-section{background:var(--card);border:1px solid var(--border);padding:16px;margin-bottom:16px;}
+.pg{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin-top:12px;}
+@media(max-width:760px){.pg{grid-template-columns:1fr 1fr;}}
+.pf{display:flex;flex-direction:column;gap:4px;position:relative;}
+.pl{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--red);margin-bottom:3px;display:block;}
+.pi-wrap{position:relative;}
+.pi{width:100%;background:var(--darker);border:1px solid var(--border);color:var(--white);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;padding:8px 28px 8px 11px;outline:none;transition:border-color 0.2s;}
+.pi:focus{border-color:var(--red);box-shadow:0 0 0 1px var(--red);}
+.pi::placeholder{color:rgba(255,255,255,0.17);font-weight:400;}
+.pi-clear{position:absolute;right:7px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gray);font-size:12px;cursor:pointer;z-index:3;display:none;}
+.pi-clear.vis{display:flex;}
+.ac-dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--dark);border:1px solid rgba(255,70,85,0.35);border-top:none;z-index:200;display:none;flex-direction:column;box-shadow:0 8px 24px rgba(0,0,0,0.5);max-height:200px;overflow-y:auto;}
+.ac-dropdown.open{display:flex;}
+.ac-item{display:flex;align-items:center;gap:8px;padding:7px 11px;cursor:pointer;transition:background 0.1s;border-bottom:1px solid var(--border);}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.focused{background:rgba(255,70,85,0.08);}
+.ac-avatar{width:20px;height:20px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;overflow:hidden;}
+.ac-avatar img{width:100%;height:100%;object-fit:cover;}
+.ac-info{flex:1;min-width:0;}
+.ac-name{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;}
+.ac-meta{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;}
+.profile-badge{display:flex;align-items:center;gap:4px;background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.15);padding:3px 7px;cursor:pointer;transition:all 0.15s;}
+.profile-badge:hover{border-color:var(--gold);}
+.pb-emoji{font-size:10px;}
+.pb-text{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.no-profile-hint{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--gray);}
+
+/* ── BUTTONS ── */
+.btn{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;padding:9px 20px;cursor:pointer;border:none;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px;}
+.btn-p{background:var(--red);color:var(--white);clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);}
+.btn-p:hover{background:#ff6070;box-shadow:0 4px 16px rgba(255,70,85,0.4);transform:translateY(-1px);}
+.btn-g{background:transparent;color:var(--gray);border:1px solid var(--border);}
+.btn-g:hover{color:var(--white);border-color:rgba(255,255,255,0.2);}
+.btn-sm{font-size:10px;padding:5px 11px;letter-spacing:2px;}
+.btn-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+/* ── RESULTS ── */
+.rg{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:11px;margin-bottom:22px;}
+.rc{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--rc,var(--red));padding:16px 14px;position:relative;overflow:hidden;animation:cardReveal 0.5s cubic-bezier(0.22,1,0.36,1) both;}
+@keyframes cardReveal{from{opacity:0;transform:scaleY(0.1) translateY(20px);}to{opacity:1;transform:scaleY(1) translateY(0);}}
+.rc::after{content:attr(data-role);position:absolute;bottom:-13px;right:-2px;font-family:'Bebas Neue',sans-serif;font-size:50px;color:var(--rc);opacity:.05;letter-spacing:2px;pointer-events:none;}
+.rc-player{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--gray);margin-bottom:6px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rc-badges{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;}
+.rc-badge{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;padding:2px 5px;}
+.rc-emoji{font-size:26px;display:block;margin-bottom:5px;}
+.rc-agent{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;line-height:1;margin-bottom:2px;}
+.rc-role{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--rc);text-transform:uppercase;margin-bottom:6px;}
+.rc-ability{font-size:11px;color:var(--gray);line-height:1.4;padding-top:7px;border-top:1px solid var(--border);}
+.rc-rank{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--off);margin-top:4px;}
+
+/* ── SETTINGS ── */
+.settings-list{display:flex;flex-direction:column;gap:7px;margin-bottom:22px;}
+.mcfg{background:var(--card);border:1px solid var(--border);padding:11px 14px;}
+.mcfg.isnew{border-color:rgba(201,168,76,0.22);}
+.mcfg-top{display:flex;align-items:center;gap:9px;margin-bottom:9px;flex-wrap:wrap;}
+.mcfg-icon{font-size:16px;}
+.mcfg-nm{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;min-width:78px;}
+.mcfg.isnew .mcfg-nm{color:var(--gold);}
+.mcfg-badge{font-family:'Share Tech Mono',monospace;font-size:7px;background:var(--gold);color:var(--darker);padding:2px 4px;}
+.mcfg-src{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--gold);border:1px solid rgba(201,168,76,0.3);padding:2px 5px;}
+.mcfg-cnt{font-family:'Share Tech Mono',monospace;font-size:9px;margin-left:auto;}
+.mcfg-cnt.ok{color:var(--green);}
+.mcfg-cnt.warn{color:var(--amber);}
+.slot-row{display:flex;gap:4px;flex-wrap:wrap;align-items:center;}
+.slot-item{display:flex;align-items:center;border:1px solid var(--border);overflow:hidden;}
+.slot-role{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;padding:4px 8px;text-transform:uppercase;cursor:pointer;border:none;background:transparent;}
+.slot-del{font-size:9px;padding:4px 6px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--gray);cursor:pointer;}
+.slot-del:hover{background:rgba(255,70,85,0.14);color:var(--red);}
+.rc-duelist{color:#ff4655;border-color:#ff4655!important;background:rgba(255,70,85,0.11)!important;}
+.rc-initiator{color:#00c8b8;border-color:#00c8b8!important;background:rgba(0,200,184,0.11)!important;}
+.rc-controller{color:#a855f7;border-color:#a855f7!important;background:rgba(168,85,247,0.11)!important;}
+.rc-sentinel{color:#f59e0b;border-color:#f59e0b!important;background:rgba(245,158,11,0.11)!important;}
+.add-slot-btn{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:4px 9px;background:transparent;border:1px dashed var(--border);color:var(--gray);cursor:pointer;}
+.add-slot-btn:hover{border-color:var(--teal);color:var(--teal);}
+.div{height:1px;background:linear-gradient(90deg,transparent,rgba(255,70,85,0.2),transparent);margin:22px 0;}
+.legend{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card2);border:1px solid rgba(255,255,255,0.1);padding:8px 16px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--white);transition:transform 0.3s;z-index:10000;white-space:nowrap;pointer-events:none;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingScreen">
+  <div class="load-logo">AGENT <em>RANDOMIZER</em></div>
+  <div class="load-bar"><div class="load-fill"></div></div>
+  <div class="load-text">// INITIALISING</div>
+</div>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" class="hidden">
+  <div class="auth-wrap">
+    <div class="auth-logo">
+      <h1>AGENT <em>RANDOMIZER</em></h1>
+      <p>// VCT PRO META · TEAM COMPOSER</p>
+    </div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">SIGN IN</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">REGISTER</button>
+      </div>
+
+      <!-- SIGN IN -->
+      <div id="loginForm">
+        <div class="auth-field">
+          <label class="auth-label">// EMAIL</label>
+          <input class="auth-input" type="email" id="loginEmail" placeholder="agent@team.gg" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">// PASSWORD</label>
+          <input class="auth-input" type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"
+                 onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <div class="auth-forgot" onclick="doForgotPassword()">Forgot password?</div>
+        <button class="auth-btn" onclick="doLogin()" id="loginBtn">SIGN IN</button>
+        <div class="auth-divider">OR</div>
+        <button class="google-btn" onclick="doGoogleLogin()">
+          <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          CONTINUE WITH GOOGLE
+        </button>
+        <div class="auth-error" id="loginError"></div>
+      </div>
+
+      <!-- REGISTER -->
+      <div id="registerForm" style="display:none">
+        <div class="auth-field">
+          <label class="auth-label">// DISPLAY NAME</label>
+          <input class="auth-input" type="text" id="regName" placeholder="YourAgentTag" maxlength="24">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">// EMAIL</label>
+          <input class="auth-input" type="email" id="regEmail" placeholder="agent@team.gg" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">// PASSWORD</label>
+          <input class="auth-input" type="password" id="regPassword" placeholder="min 6 characters" autocomplete="new-password"
+                 onkeydown="if(event.key==='Enter')doRegister()">
+        </div>
+        <button class="auth-btn" onclick="doRegister()" id="regBtn">CREATE ACCOUNT</button>
+        <div class="auth-divider">OR</div>
+        <button class="google-btn" onclick="doGoogleLogin()">
+          <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          CONTINUE WITH GOOGLE
+        </button>
+        <div class="auth-error" id="regError"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+<div class="wrap">
+
+<header class="hdr">
+  <div class="hdr-left">
+    <div class="hdr-eye">// TEAM COMPOSER v7.0 · VCT PRO META 2025</div>
+    <h1>AGENT <em>RANDOMIZER</em></h1>
+  </div>
+  <div class="hdr-right">
+    <div class="sync-badge synced" id="syncBadge">● SYNCED</div>
+    <nav class="hdr-nav">
+      <button class="nav-tab active" onclick="showView('play')">▶ PLAY</button>
+      <button class="nav-tab"        onclick="showView('myprofile')">👤 MY PROFILE</button>
+      <button class="nav-tab"        onclick="showView('squad')">👥 SQUAD</button>
+      <button class="nav-tab"        onclick="showView('settings')">⚙ SETUP</button>
+    </nav>
+    <!-- User pill -->
+    <div class="user-pill" id="userPill">
+      <div class="user-avatar" id="userAvatarHdr">🎮</div>
+      <div class="user-name" id="userNameHdr">Loading…</div>
+      <div class="user-menu">
+        <div class="user-menu-item" onclick="showView('myprofile')">👤 My Profile</div>
+        <div class="user-menu-item" onclick="showView('squad')">👥 Squad Profiles</div>
+        <div class="user-menu-item danger" onclick="doSignOut()">⬛ Sign Out</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ══ PLAY VIEW ══ -->
+<div class="view active" id="view-play">
+  <div class="sh"><div class="st">// SELECT MAP</div><div class="ss">12 maps · VCT 2025 role combos</div></div>
+  <div class="maps-grid" id="playMapsGrid"></div>
+
+  <div class="map-banner" id="mapBanner" style="display:none">
+    <div class="bn-name" id="bnName"></div>
+    <div class="bn-meta">
+      <div class="bn-src" id="bnSrc"></div>
+      <div class="bn-roles" id="bnRoles"></div>
+    </div>
+    <button class="btn btn-g btn-sm" onclick="showView('settings')">✏ EDIT ROLES</button>
+  </div>
+
+  <div class="play-section" id="playSection" style="display:none">
+    <div class="sh" style="margin-bottom:3px">
+      <div class="st">// PLAYERS</div>
+      <div class="ss">type name · squad profiles auto-suggest</div>
+    </div>
+    <div class="pg" id="playersGrid"></div>
+  </div>
+
+  <div class="btn-row" id="goRow" style="display:none;margin-bottom:22px;">
+    <button class="btn btn-p" onclick="doRandomize()">🎲 RANDOMIZE AGENTS</button>
+    <button class="btn btn-g" onclick="clearPlayers()">CLEAR</button>
+  </div>
+
+  <div id="resultsSection" style="display:none">
+    <div class="div"></div>
+    <div class="sh"><div class="st">// ASSIGNMENTS</div><div class="ss" id="resSub"></div></div>
+    <div class="rg" id="resultsGrid"></div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="doRandomize()">🎲 REROLL</button>
+      <button class="btn btn-g" onclick="hideResults()">↑ CHANGE MAP</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MY PROFILE VIEW ══ -->
+<div class="view" id="view-myprofile">
+  <div class="sh"><div class="st">// MY PROFILE</div><div class="ss">your settings sync to the cloud</div></div>
+  <div class="my-profile-wrap">
+
+    <!-- Sidebar -->
+    <div class="my-profile-sidebar">
+      <div class="my-profile-card">
+        <div class="my-avatar-wrap">
+          <div class="my-avatar" id="myAvatarEl" onclick="document.getElementById('myAvatarInput').click()">🎮</div>
+          <div class="my-avatar-edit">✎</div>
+          <input type="file" id="myAvatarInput" accept="image/*" class="my-avatar-input" onchange="uploadMyAvatar(this)">
+        </div>
+        <div class="my-display-name" id="myDisplayName">—</div>
+        <div class="my-email" id="myEmailEl">—</div>
+        <div class="my-uid" id="myUidEl">UID: —</div>
+        <button class="save-profile-btn" onclick="saveMyProfile()">💾 SAVE PROFILE</button>
+      </div>
+    </div>
+
+    <!-- Settings panels -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="profile-section">
+        <h3>// IDENTITY</h3>
+        <div class="field-row">
+          <label class="field-label">DISPLAY NAME</label>
+          <input class="field-input" type="text" id="myName" placeholder="YourAgentTag" maxlength="24">
+        </div>
+        <div class="field-row">
+          <label class="field-label">IN-GAME TAG (optional)</label>
+          <input class="field-input" type="text" id="myIGN" placeholder="Agent#1234" maxlength="30">
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <h3>// RANK & ROLE</h3>
+        <div class="field-row">
+          <label class="field-label">CURRENT RANK</label>
+          <select class="field-select" id="myRank">
+            <option value="">Select rank…</option>
+            <option>Iron</option><option>Bronze</option><option>Silver</option>
+            <option>Gold</option><option>Platinum</option><option>Diamond</option>
+            <option>Ascendant</option><option>Immortal</option><option>Radiant</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label class="field-label">PREFERRED ROLE</label>
+          <div class="role-pick" id="myRolePick">
+            <button class="role-pick-btn sel-any" onclick="setMyRole(null)">ANY</button>
+            <button class="role-pick-btn" onclick="setMyRole('duelist')">DUEL</button>
+            <button class="role-pick-btn" onclick="setMyRole('initiator')">INIT</button>
+            <button class="role-pick-btn" onclick="setMyRole('controller')">CTRL</button>
+            <button class="role-pick-btn" onclick="setMyRole('sentinel')">SENT</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <h3>// FAVOURITE AGENTS <span style="color:var(--gray);font-size:8px">(max 4)</span></h3>
+        <div class="fav-agent-grid" id="myFavGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SQUAD VIEW ══ -->
+<div class="view" id="view-squad">
+  <div class="sh"><div class="st">// SQUAD PROFILES</div><div class="ss">all registered teammates</div></div>
+  <p style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--gray);letter-spacing:1px;margin-bottom:16px;line-height:1.6;">
+    Squad members are players who have registered and saved their profile.<br>
+    Their role & fav agents are automatically used during randomisation.
+  </p>
+  <div class="squad-grid" id="squadGrid">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--gray);letter-spacing:1px;padding:20px 0;">Loading squad…</div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS VIEW ══ -->
+<div class="view" id="view-settings">
+  <div class="sh"><div class="st">// ROLE COMBOS PER MAP</div><div class="ss">customise which 5 roles are assigned</div></div>
+  <div class="settings-list" id="settingsList"></div>
+  <div class="btn-row" style="margin-bottom:18px;">
+    <button class="btn btn-p" onclick="saveSettings()">💾 SAVE</button>
+    <button class="btn btn-g" onclick="resetDefaults()">↺ RESET</button>
+  </div>
+  <div class="div"></div>
+  <div class="sh"><div class="st">// LEGEND</div></div>
+  <div class="legend">
+    <span class="rtag" style="color:#ff4655;border-color:#ff4655">DUELIST</span>
+    <span class="rtag" style="color:#00c8b8;border-color:#00c8b8">INITIATOR</span>
+    <span class="rtag" style="color:#a855f7;border-color:#a855f7">CONTROLLER</span>
+    <span class="rtag" style="color:#f59e0b;border-color:#f59e0b">SENTINEL</span>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+         GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail,
+         onAuthStateChanged, signOut, updateProfile }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  🔧 PASTE YOUR FIREBASE CONFIG VALUES HERE                  ║
+// ║  Get these from Firebase Console → Project Settings          ║
+// ║  → Your apps → SDK setup and configuration                   ║
+// ╚══════════════════════════════════════════════════════════════╝
+const firebaseConfig = {
+  apiKey:            "PASTE_YOUR_apiKey_HERE",
+  authDomain:        "PASTE_YOUR_authDomain_HERE",
+  projectId:         "PASTE_YOUR_projectId_HERE",
+  storageBucket:     "PASTE_YOUR_storageBucket_HERE",
+  messagingSenderId: "PASTE_YOUR_messagingSenderId_HERE",
+  appId:             "PASTE_YOUR_appId_HERE"
+};
+// ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ── DATA ──
+const MAPS=[
+  {name:"Ascent",  icon:"🏛️",type:"Standard", color:"rgba(201,168,76,0.17)", isNew:false,src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Bind",    icon:"🌅",type:"No Mid",    color:"rgba(255,140,50,0.17)", isNew:false,src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Haven",   icon:"🏯",type:"3-Site",    color:"rgba(80,200,140,0.17)", isNew:false,src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Split",   icon:"⛩️",type:"Vertical",  color:"rgba(255,90,90,0.17)",  isNew:false,src:"VCT Masters Toronto 2025"},
+  {name:"Icebox",  icon:"❄️",type:"Vertical",  color:"rgba(80,190,255,0.17)", isNew:false,src:"VCT Masters Toronto 2025"},
+  {name:"Breeze",  icon:"🌊",type:"Open",      color:"rgba(80,140,255,0.17)", isNew:false,src:"VCT 2025 Stage 1"},
+  {name:"Fracture",icon:"⚡",type:"Unique",    color:"rgba(200,100,255,0.17)",isNew:false,src:"VCT 2025 Stage 1"},
+  {name:"Pearl",   icon:"🐚",type:"Standard",  color:"rgba(80,220,200,0.17)", isNew:false,src:"VCT Masters Toronto 2025"},
+  {name:"Lotus",   icon:"🌸",type:"3-Site",    color:"rgba(255,140,190,0.17)",isNew:false,src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Sunset",  icon:"🌆",type:"Standard",  color:"rgba(255,180,60,0.17)", isNew:false,src:"VCT Masters Toronto 2025"},
+  {name:"Abyss",   icon:"🌀",type:"No Walls",  color:"rgba(70,90,220,0.17)",  isNew:false,src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Corrode", icon:"⚗️",type:"Standard",  color:"rgba(160,210,120,0.17)",isNew:true, src:"VCT Champions 2025 · vlr.gg"},
+];
+
+const DEFAULT_COMBOS={
+  Ascent:  ["duelist","initiator","initiator","controller","sentinel"],
+  Bind:    ["duelist","initiator","controller","controller","sentinel"],
+  Haven:   ["duelist","initiator","initiator","controller","sentinel"],
+  Split:   ["duelist","initiator","controller","controller","sentinel"],
+  Icebox:  ["duelist","initiator","controller","sentinel","sentinel"],
+  Breeze:  ["duelist","initiator","controller","controller","sentinel"],
+  Fracture:["duelist","initiator","initiator","controller","sentinel"],
+  Pearl:   ["duelist","initiator","controller","controller","sentinel"],
+  Lotus:   ["duelist","initiator","controller","controller","sentinel"],
+  Sunset:  ["duelist","initiator","initiator","controller","sentinel"],
+  Abyss:   ["duelist","initiator","initiator","controller","controller"],
+  Corrode: ["duelist","initiator","controller","controller","sentinel"],
+};
+
+const AGENTS={
+  duelist:[
+    {name:"Jett",emoji:"💨",ability:"Dash & Bladestorm"},
+    {name:"Reyna",emoji:"💜",ability:"Devour & Dismiss"},
+    {name:"Phoenix",emoji:"🔥",ability:"Hot Hands & Run it Back"},
+    {name:"Neon",emoji:"⚡",ability:"High Gear & Overdrive"},
+    {name:"Yoru",emoji:"🌀",ability:"Fakeout & Dimensional Drift"},
+    {name:"Iso",emoji:"🎯",ability:"Double Tap & Kill Contract"},
+    {name:"Raze",emoji:"💥",ability:"Blast Pack & Showstopper"},
+    {name:"Waylay",emoji:"🌊",ability:"Refract & Recursion"},
+  ],
+  initiator:[
+    {name:"Sova",emoji:"🏹",ability:"Recon Bolt & Hunter's Fury"},
+    {name:"Breach",emoji:"✊",ability:"Fault Line & Rolling Thunder"},
+    {name:"Skye",emoji:"🌿",ability:"Trailblazer & Seekers"},
+    {name:"KAY/O",emoji:"🤖",ability:"ZERO/POINT & NULL/CMD"},
+    {name:"Fade",emoji:"👁️",ability:"Haunt & Nightfall"},
+    {name:"Gekko",emoji:"🦎",ability:"Wingman & Thrash"},
+    {name:"Tejo",emoji:"🛸",ability:"Stealth Drone & Guided Salvo"},
+  ],
+  controller:[
+    {name:"Brimstone",emoji:"🪖",ability:"Sky Smokes & Orbital Strike"},
+    {name:"Viper",emoji:"☠️",ability:"Toxic Screen & Viper's Pit"},
+    {name:"Omen",emoji:"👻",ability:"Dark Cover & From the Shadows"},
+    {name:"Astra",emoji:"⭐",ability:"Stars & Cosmic Divide"},
+    {name:"Harbor",emoji:"🌊",ability:"High Tide & Reckoning"},
+    {name:"Clove",emoji:"☘️",ability:"Pick-Me-Up & Not Dead Yet"},
+  ],
+  sentinel:[
+    {name:"Sage",emoji:"💚",ability:"Slow Orb & Resurrection"},
+    {name:"Cypher",emoji:"🕵️",ability:"Trapwire & Neural Theft"},
+    {name:"Killjoy",emoji:"🔧",ability:"Turret & Lockdown"},
+    {name:"Chamber",emoji:"🔫",ability:"Rendezvous & Tour de Force"},
+    {name:"Deadlock",emoji:"🕸️",ability:"GravNet & Annihilation"},
+    {name:"Vyse",emoji:"🪤",ability:"Arc Rose & Steel Garden"},
+  ],
+};
+
+const ROLE_ORDER=["duelist","initiator","controller","sentinel"];
+const ROLE_COLORS={duelist:"#ff4655",initiator:"#00c8b8",controller:"#a855f7",sentinel:"#f59e0b"};
+const ALL_AGENTS=Object.values(AGENTS).flat();
+
+// ── STATE ──
+let currentUser=null;
+let myProfile={name:'',ign:'',rank:'',preferredRole:null,favAgents:[],photoURL:''};
+let squadProfiles=[];  // all users from Firestore
+let combos={};
+let draft={};
+let selectedMapIdx=null;
+let acFocusIdx={};
+
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function t(msg){
+  const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+function setSyncBadge(state){
+  const b=document.getElementById('syncBadge');
+  const map={synced:['● SYNCED','synced'],syncing:['◌ SYNCING…','syncing'],offline:['○ OFFLINE','offline']};
+  const [txt,cls]=map[state]||map.offline;
+  b.textContent=txt;b.className='sync-badge '+cls;
+}
+
+// ════════════════════════════════
+// AUTH STATE
+// ════════════════════════════════
+onAuthStateChanged(auth, async (user) => {
+  document.getElementById('loadingScreen').classList.add('hidden');
+  if(user){
+    currentUser=user;
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('app').style.display='block';
+    updateHeaderUser(user);
+    MAPS.forEach(m=>{if(!combos[m.name])combos[m.name]=[...DEFAULT_COMBOS[m.name]];});
+    await loadMyProfile();
+    await loadSquadProfiles();
+    renderPlayMaps();
+    buildPlayerInputs();
+    renderMyProfileUI();
+  } else {
+    currentUser=null;
+    document.getElementById('app').style.display='none';
+    document.getElementById('authScreen').classList.remove('hidden');
+  }
+});
+
+function updateHeaderUser(user){
+  const name=user.displayName||user.email?.split('@')[0]||'Agent';
+  document.getElementById('userNameHdr').textContent=name;
+  const av=document.getElementById('userAvatarHdr');
+  if(user.photoURL){av.innerHTML=`<img src="${user.photoURL}" alt="">`;}
+  else{av.textContent='🎮';}
+}
+
+// ════════════════════════════════
+// FIRESTORE — MY PROFILE
+// ════════════════════════════════
+async function loadMyProfile(){
+  if(!currentUser)return;
+  setSyncBadge('syncing');
+  try{
+    const snap=await getDoc(doc(db,'users',currentUser.uid));
+    if(snap.exists()){
+      const d=snap.data();
+      myProfile={
+        name:d.name||currentUser.displayName||'',
+        ign:d.ign||'',
+        rank:d.rank||'',
+        preferredRole:d.preferredRole||null,
+        favAgents:d.favAgents||[],
+        photoURL:d.photoURL||currentUser.photoURL||'',
+      };
+      if(d.combos)combos={...d.combos};
+    } else {
+      // first time — seed from Google profile
+      myProfile.name=currentUser.displayName||'';
+      myProfile.photoURL=currentUser.photoURL||'';
+    }
+    setSyncBadge('synced');
+  }catch(e){console.error(e);setSyncBadge('offline');}
+}
+
+async function saveMyProfileToFirestore(){
+  if(!currentUser)return;
+  setSyncBadge('syncing');
+  try{
+    await setDoc(doc(db,'users',currentUser.uid),{
+      name:myProfile.name,
+      ign:myProfile.ign,
+      rank:myProfile.rank,
+      preferredRole:myProfile.preferredRole,
+      favAgents:myProfile.favAgents,
+      photoURL:myProfile.photoURL,
+      combos,
+      updatedAt:serverTimestamp(),
+      email:currentUser.email||'',
+      uid:currentUser.uid,
+    },{merge:true});
+    setSyncBadge('synced');
+    t('// PROFILE SAVED & SYNCED ✓');
+  }catch(e){setSyncBadge('offline');t('// SYNC FAILED — CHECK CONNECTION');}
+}
+
+async function loadSquadProfiles(){
+  try{
+    const snap=await getDocs(collection(db,'users'));
+    squadProfiles=[];
+    snap.forEach(d=>{
+      const data=d.data();
+      if(d.id!==currentUser.uid&&data.name){
+        squadProfiles.push({uid:d.id,...data});
+      }
+    });
+  }catch(e){console.error('Squad load failed',e);}
+}
+
+// ════════════════════════════════
+// AUTH ACTIONS
+// ════════════════════════════════
+function switchAuthTab(tab){
+  document.getElementById('loginForm').style.display=tab==='login'?'':'none';
+  document.getElementById('registerForm').style.display=tab==='register'?'':'none';
+  document.querySelectorAll('.auth-tab').forEach((el,i)=>el.classList.toggle('active',i===(tab==='login'?0:1)));
+}
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  const err=document.getElementById('loginError');
+  const btn=document.getElementById('loginBtn');
+  if(!email||!pass){showAuthErr(err,'Please fill in all fields.');return;}
+  btn.disabled=true;btn.textContent='SIGNING IN…';
+  try{
+    await signInWithEmailAndPassword(auth,email,pass);
+  }catch(e){showAuthErr(err,friendlyError(e));btn.disabled=false;btn.textContent='SIGN IN';}
+}
+
+async function doRegister(){
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pass=document.getElementById('regPassword').value;
+  const err=document.getElementById('regError');
+  const btn=document.getElementById('regBtn');
+  if(!name||!email||!pass){showAuthErr(err,'Please fill in all fields.');return;}
+  if(pass.length<6){showAuthErr(err,'Password must be at least 6 characters.');return;}
+  btn.disabled=true;btn.textContent='CREATING…';
+  try{
+    const cred=await createUserWithEmailAndPassword(auth,email,pass);
+    await updateProfile(cred.user,{displayName:name});
+    // seed profile
+    await setDoc(doc(db,'users',cred.user.uid),{
+      name,email,uid:cred.user.uid,
+      rank:'',preferredRole:null,favAgents:[],photoURL:'',ign:'',
+      updatedAt:serverTimestamp(),
+    });
+  }catch(e){showAuthErr(err,friendlyError(e));btn.disabled=false;btn.textContent='CREATE ACCOUNT';}
+}
+
+async function doGoogleLogin(){
+  const provider=new GoogleAuthProvider();
+  try{await signInWithPopup(auth,provider);}
+  catch(e){if(e.code!=='auth/popup-closed-by-user')t('// GOOGLE SIGN-IN FAILED');}
+}
+
+async function doForgotPassword(){
+  const email=document.getElementById('loginEmail').value.trim();
+  if(!email){showAuthErr(document.getElementById('loginError'),'Enter your email above first.');return;}
+  try{await sendPasswordResetEmail(auth,email);t('// RESET EMAIL SENT — CHECK YOUR INBOX');}
+  catch(e){t('// '+friendlyError(e).toUpperCase());}
+}
+
+async function doSignOut(){
+  if(!confirm('Sign out?'))return;
+  await signOut(auth);
+}
+
+function showAuthErr(el,msg){el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),4000);}
+function friendlyError(e){
+  const map={
+    'auth/user-not-found':'No account with that email.',
+    'auth/wrong-password':'Wrong password.',
+    'auth/invalid-credential':'Invalid email or password.',
+    'auth/email-already-in-use':'Email already registered.',
+    'auth/too-many-requests':'Too many attempts — try again later.',
+    'auth/network-request-failed':'Network error — check connection.',
+  };
+  return map[e.code]||e.message||'Something went wrong.';
+}
+
+// expose to global for HTML onclick
+window.doLogin=doLogin;
+window.doRegister=doRegister;
+window.doGoogleLogin=doGoogleLogin;
+window.doForgotPassword=doForgotPassword;
+window.doSignOut=doSignOut;
+window.switchAuthTab=switchAuthTab;
+
+// ════════════════════════════════
+// MY PROFILE UI
+// ════════════════════════════════
+function renderMyProfileUI(){
+  document.getElementById('myName').value=myProfile.name||'';
+  document.getElementById('myIGN').value=myProfile.ign||'';
+  document.getElementById('myRank').value=myProfile.rank||'';
+  document.getElementById('myDisplayName').textContent=myProfile.name||currentUser?.displayName||'—';
+  document.getElementById('myEmailEl').textContent=currentUser?.email||'—';
+  document.getElementById('myUidEl').textContent='UID: '+(currentUser?.uid||'—').substring(0,16)+'…';
+
+  // Avatar
+  const avEl=document.getElementById('myAvatarEl');
+  if(myProfile.photoURL){avEl.innerHTML=`<img src="${escHtml(myProfile.photoURL)}" alt="">`;}
+  else{avEl.textContent='🎮';}
+
+  // Role pick
+  renderMyRolePick();
+
+  // Fav agents
+  renderMyFavAgents();
+}
+
+function renderMyRolePick(){
+  const rp=document.getElementById('myRolePick');
+  rp.querySelectorAll('button').forEach(btn=>{
+    btn.className='role-pick-btn';
+    const r=btn.dataset.role||null;
+    if(r===myProfile.preferredRole||(r===null&&!myProfile.preferredRole)){
+      btn.className='role-pick-btn sel-'+(r||'any');
+    }
+  });
+  // Set data-role on buttons
+  rp.children[0].dataset.role='';
+  ['duelist','initiator','controller','sentinel'].forEach((r,i)=>{rp.children[i+1].dataset.role=r;});
+}
+
+function renderMyFavAgents(){
+  const grid=document.getElementById('myFavGrid');
+  const allA=ALL_AGENTS;
+  grid.innerHTML=allA.map(a=>{
+    const isFav=myProfile.favAgents.includes(a.name);
+    const role=Object.keys(AGENTS).find(r=>AGENTS[r].find(ag=>ag.name===a.name));
+    const c=ROLE_COLORS[role]||'#fff';
+    return`<button class="fav-agent-btn ${isFav?'fav':''}" onclick="toggleMyFav('${a.name}')"
+                    style="${isFav?'':'color:'+c}">${a.emoji} ${a.name}</button>`;
+  }).join('');
+}
+
+function setMyRole(role){
+  myProfile.preferredRole=role;
+  renderMyRolePick();
+}
+
+function toggleMyFav(name){
+  if(myProfile.favAgents.includes(name)){
+    myProfile.favAgents=myProfile.favAgents.filter(a=>a!==name);
+  } else {
+    if(myProfile.favAgents.length>=4){t('// MAX 4 FAV AGENTS');return;}
+    myProfile.favAgents.push(name);
+  }
+  renderMyFavAgents();
+}
+
+function saveMyProfile(){
+  myProfile.name=document.getElementById('myName').value.trim()||currentUser?.displayName||'Agent';
+  myProfile.ign=document.getElementById('myIGN').value.trim();
+  myProfile.rank=document.getElementById('myRank').value;
+  document.getElementById('myDisplayName').textContent=myProfile.name;
+  saveMyProfileToFirestore();
+  // Update auth display name
+  if(currentUser&&myProfile.name)updateProfile(currentUser,{displayName:myProfile.name}).catch(()=>{});
+  document.getElementById('userNameHdr').textContent=myProfile.name;
+}
+
+function uploadMyAvatar(input){
+  const file=input.files[0];if(!file)return;
+  // Convert to base64 and store in Firestore (small images only for free tier)
+  if(file.size>200000){t('// IMAGE TOO LARGE — MAX 200KB');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    myProfile.photoURL=e.target.result;
+    const avEl=document.getElementById('myAvatarEl');
+    avEl.innerHTML=`<img src="${escHtml(myProfile.photoURL)}" alt="">`;
+    const hAv=document.getElementById('userAvatarHdr');
+    hAv.innerHTML=`<img src="${escHtml(myProfile.photoURL)}" alt="">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+window.setMyRole=setMyRole;
+window.toggleMyFav=toggleMyFav;
+window.saveMyProfile=saveMyProfile;
+window.uploadMyAvatar=uploadMyAvatar;
+
+// ════════════════════════════════
+// SQUAD VIEW
+// ════════════════════════════════
+function renderSquad(){
+  const grid=document.getElementById('squadGrid');
+  if(!squadProfiles.length){
+    grid.innerHTML='<div style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--gray);letter-spacing:1px;padding:20px 0;">No other squad members yet.<br>Share the app link with teammates so they can register.</div>';
+    return;
+  }
+  grid.innerHTML=squadProfiles.map(p=>{
+    const rc=ROLE_COLORS[p.preferredRole]||'rgba(255,255,255,0.3)';
+    const role=(p.preferredRole||'any').toUpperCase();
+    const favChips=(p.favAgents||[]).map(a=>{
+      const rk=Object.keys(AGENTS).find(r=>AGENTS[r].find(ag=>ag.name===a));
+      const c=ROLE_COLORS[rk]||'#fff';
+      return`<span class="sq-fav" style="color:${c};border-color:${c}">${a}</span>`;
+    }).join('');
+    const avatarHTML=p.photoURL
+      ?`<img src="${escHtml(p.photoURL)}" alt="">`
+      :'🎮';
+    return`<div class="squad-card">
+      <div class="sq-head">
+        <div class="sq-avatar">${avatarHTML}</div>
+        <div>
+          <div class="sq-name">${escHtml(p.name||'Agent')}</div>
+          <div class="sq-role" style="color:${rc}">${role}${p.ign?' · '+escHtml(p.ign):''}</div>
+          ${p.rank?`<div class="sq-rank">🏅 ${p.rank}</div>`:''}
+        </div>
+      </div>
+      ${favChips?`<div class="sq-favs">${favChips}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════
+// PLAY — MAPS
+// ════════════════════════════════
+function renderPlayMaps(){
+  document.getElementById('playMapsGrid').innerHTML=MAPS.map((m,i)=>`
+    <div class="map-tile${m.isNew?' isnew':''} ${selectedMapIdx===i?'sel':''}" id="ptile-${i}"
+         onclick="selectMap(${i})" style="--mc:${m.color}">
+      <div class="map-chk">✓</div>
+      ${m.isNew?'<div class="new-badge">NEW</div>':''}
+      <div class="map-icon-el">${m.icon}</div>
+      <div class="map-info">
+        <div class="map-nm">${m.name}</div>
+        <div class="map-tp">${m.type}</div>
+      </div>
+    </div>`).join('');
+}
+
+function selectMap(i){
+  document.querySelectorAll('.map-tile').forEach(t=>t.classList.remove('sel'));
+  document.getElementById(`ptile-${i}`)?.classList.add('sel');
+  selectedMapIdx=i;
+  refreshBanner();
+  buildPlayerInputs();
+  document.getElementById('mapBanner').style.display='flex';
+  document.getElementById('playSection').style.display='block';
+  document.getElementById('goRow').style.display='flex';
+  document.getElementById('resultsSection').style.display='none';
+  const m=MAPS[i];
+  document.getElementById('mapBanner').className='map-banner'+(m.isNew?' gold':'');
+}
+
+function refreshBanner(){
+  if(selectedMapIdx===null)return;
+  const m=MAPS[selectedMapIdx];
+  const roles=combos[m.name]||DEFAULT_COMBOS[m.name];
+  document.getElementById('bnName').innerHTML=`${m.icon} ${m.name}`;
+  document.getElementById('bnSrc').textContent=m.src?`// ${m.src}`:'';
+  document.getElementById('bnRoles').innerHTML=roles.map(r=>`<span class="rtag" style="color:${ROLE_COLORS[r]};border-color:${ROLE_COLORS[r]}">${r}</span>`).join('');
+}
+
+// ════════════════════════════════
+// PLAY — PLAYER INPUTS
+// ════════════════════════════════
+function buildPlayerInputs(){
+  const existing=[1,2,3,4,5].map(n=>document.getElementById(`pi${n}`)?.value||'');
+  document.getElementById('playersGrid').innerHTML=[1,2,3,4,5].map(n=>`
+    <div class="pf">
+      <label class="pl">// PLAYER ${n}</label>
+      <div class="pi-wrap">
+        <input class="pi" id="pi${n}" placeholder="Type or pick…" maxlength="22" autocomplete="off"
+               value="${escHtml(existing[n-1])}"
+               oninput="onPiInput(${n})" onkeydown="onPiKey(event,${n})" onfocus="onPiFocus(${n})">
+        <button class="pi-clear ${existing[n-1]?'vis':''}" id="clr${n}" onclick="clearSlot(${n})" tabindex="-1">✕</button>
+        <div class="ac-dropdown" id="acd${n}"></div>
+      </div>
+      <div id="pbadge${n}">${renderBadge(findSquadProfile(existing[n-1]))}</div>
+    </div>`).join('');
+  document.removeEventListener('click',onDocClick,true);
+  document.addEventListener('click',onDocClick,{capture:true});
+}
+
+function onDocClick(e){if(!e.target.closest('.pi-wrap'))closeAllDD();}
+function closeAllDD(){document.querySelectorAll('.ac-dropdown').forEach(d=>d.classList.remove('open'));}
+
+function findSquadProfile(name){
+  if(!name)return null;
+  const nl=name.toLowerCase();
+  // check squad + self
+  if(myProfile.name&&myProfile.name.toLowerCase()===nl)
+    return{...myProfile,uid:currentUser?.uid,isSelf:true};
+  return squadProfiles.find(p=>p.name?.toLowerCase()===nl)||null;
+}
+
+function getAllProfiles(){
+  const all=[];
+  if(myProfile.name)all.push({...myProfile,uid:currentUser?.uid,isSelf:true});
+  all.push(...squadProfiles);
+  return all;
+}
+
+function openDropdown(n,query){
+  const dd=document.getElementById(`acd${n}`);if(!dd)return;
+  const all=getAllProfiles();
+  const q=query.trim().toLowerCase();
+  const matches=q?all.filter(p=>p.name?.toLowerCase().includes(q)):all;
+  if(!matches.length){
+    dd.innerHTML=`<div style="padding:7px 11px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--gray)">No profiles match</div>`;
+  } else {
+    dd.innerHTML=matches.map((p,i)=>{
+      const rc=ROLE_COLORS[p.preferredRole]||'rgba(255,255,255,0.3)';
+      const avHTML=p.photoURL
+        ?`<img src="${escHtml(p.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+        :'🎮';
+      const badge=p.isSelf?'<span style="font-family:\'Share Tech Mono\',monospace;font-size:7px;color:var(--gold);margin-left:2px">YOU</span>':'';
+      return`<div class="ac-item" id="aci-${n}-${i}" onclick="pickProfile(${n},'${p.name}')">
+        <div class="ac-avatar">${avHTML}</div>
+        <div class="ac-info">
+          <div class="ac-name">${escHtml(p.name)}${badge}</div>
+          <div class="ac-meta" style="color:${rc}">${(p.preferredRole||'any').toUpperCase()}${p.rank?' · '+p.rank:''}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  acFocusIdx[n]=-1;
+  dd.classList.add('open');
+}
+
+function pickProfile(n,name){
+  document.getElementById(`pi${n}`).value=name;
+  closeAllDD();
+  updateClr(n);
+  document.getElementById(`pbadge${n}`).innerHTML=renderBadge(findSquadProfile(name));
+  const next=document.getElementById(`pi${n+1}`);
+  if(next)next.focus();
+}
+
+function onPiInput(n){
+  const v=document.getElementById(`pi${n}`)?.value||'';
+  updateClr(n);
+  document.getElementById(`pbadge${n}`).innerHTML=renderBadge(v.trim()?findSquadProfile(v.trim()):null);
+  openDropdown(n,v);
+}
+function onPiFocus(n){openDropdown(n,document.getElementById(`pi${n}`)?.value||'');}
+function onPiKey(e,n){
+  const dd=document.getElementById(`acd${n}`);
+  const items=dd?.querySelectorAll('.ac-item')||[];
+  if(e.key==='ArrowDown'){e.preventDefault();acFocusIdx[n]=Math.min((acFocusIdx[n]??-1)+1,items.length-1);hilite(n,items);}
+  else if(e.key==='ArrowUp'){e.preventDefault();acFocusIdx[n]=Math.max((acFocusIdx[n]??0)-1,-1);hilite(n,items);}
+  else if(e.key==='Enter'){const fi=acFocusIdx[n]??-1;if(fi>=0&&fi<items.length){items[fi].click();}else{closeAllDD();doRandomize();}}
+  else if(e.key==='Escape'||e.key==='Tab'){closeAllDD();}
+}
+function hilite(n,items){
+  items.forEach((el,i)=>el.classList.toggle('focused',i===(acFocusIdx[n]??-1)));
+  const fi=acFocusIdx[n]??-1;if(fi>=0&&items[fi])items[fi].scrollIntoView({block:'nearest'});
+}
+function clearSlot(n){
+  document.getElementById(`pi${n}`).value='';updateClr(n);
+  document.getElementById(`pbadge${n}`).innerHTML=renderBadge(null);closeAllDD();
+  document.getElementById(`pi${n}`)?.focus();
+}
+function updateClr(n){document.getElementById(`clr${n}`)?.classList.toggle('vis',!!(document.getElementById(`pi${n}`)?.value));}
+
+function renderBadge(prof){
+  if(!prof)return`<div class="no-profile-hint">not in squad</div>`;
+  const rc=ROLE_COLORS[prof.preferredRole]||'rgba(255,255,255,0.4)';
+  const role=(prof.preferredRole||'any').toUpperCase();
+  const favStr=(prof.favAgents||[]).slice(0,2).join(' · ')||'no favs';
+  const avHTML=prof.photoURL
+    ?`<img src="${escHtml(prof.photoURL)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    :(prof.emoji||'🎮');
+  return`<div class="profile-badge" onclick="showView('squad')">
+    <div class="pb-emoji" style="width:14px;height:14px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;">${avHTML}</div>
+    <div class="pb-text" style="color:${rc}">${role}${prof.rank?' · '+prof.rank:''} · ${favStr}</div>
+  </div>`;
+}
+
+function clearPlayers(){[1,2,3,4,5].forEach(n=>clearSlot(n));}
+function hideResults(){document.getElementById('resultsSection').style.display='none';window.scrollTo({top:0,behavior:'smooth'});}
+
+// ════════════════════════════════
+// RANDOMIZE
+// ════════════════════════════════
+function doRandomize(){
+  if(selectedMapIdx===null){t('// SELECT A MAP FIRST');return;}
+  const m=MAPS[selectedMapIdx];
+  const mapRoles=[...(combos[m.name]||DEFAULT_COMBOS[m.name])].slice(0,5);
+
+  const players=[1,2,3,4,5].map(n=>{
+    const name=(document.getElementById(`pi${n}`)?.value.trim()||`Player ${n}`);
+    return{name,prof:findSquadProfile(name)};
+  });
+
+  const rolePool=[...mapRoles];
+  const assigned=new Array(5).fill(null);
+  const usedRoleIdxs=new Set();
+
+  players.forEach((p,i)=>{
+    if(p.prof?.preferredRole){
+      const ri=rolePool.findIndex((r,idx)=>r===p.prof.preferredRole&&!usedRoleIdxs.has(idx));
+      if(ri!==-1){assigned[i]=rolePool[ri];usedRoleIdxs.add(ri);}
+    }
+  });
+  const remaining=rolePool.filter((_,idx)=>!usedRoleIdxs.has(idx)).sort(()=>Math.random()-0.5);
+  let ri=0;
+  players.forEach((p,i)=>{if(!assigned[i])assigned[i]=remaining[ri++];});
+
+  const usedAgents=new Set();
+  const assignments=players.map((p,i)=>{
+    const role=assigned[i];
+    let pool=AGENTS[role].filter(a=>!usedAgents.has(a.name));
+    let agent=null;let isFavMatch=false;
+    if(p.prof?.favAgents?.length){
+      const fav=pool.filter(a=>p.prof.favAgents.includes(a.name));
+      if(fav.length){agent=fav[Math.floor(Math.random()*fav.length)];isFavMatch=true;}
+    }
+    if(!agent)agent=pool[Math.floor(Math.random()*pool.length)];
+    usedAgents.add(agent.name);
+    return{player:p.name,prof:p.prof,role,agent,isFavMatch,roleMatch:p.prof?.preferredRole===role};
+  });
+
+  renderResults(assignments,m);
+  document.getElementById('resultsSection').style.display='block';
+  setTimeout(()=>document.getElementById('resultsSection').scrollIntoView({behavior:'smooth',block:'start'}),80);
+}
+
+function renderResults(assignments,map){
+  document.getElementById('resSub').textContent=`${map.name} · ${map.src||map.type}`;
+  document.getElementById('resultsGrid').innerHTML=assignments.map((a,i)=>{
+    const rc=ROLE_COLORS[a.role];
+    return`<div class="rc" data-role="${a.role.toUpperCase()}" style="--rc:${rc};animation-delay:${i*0.1}s">
+      <div class="rc-player">${escHtml(a.player)}</div>
+      <div class="rc-badges">
+        ${a.isFavMatch?`<span class="rc-badge" style="background:rgba(201,168,76,0.12);color:var(--gold);border:1px solid rgba(201,168,76,0.3)">⭐ FAV</span>`:''}
+        ${a.roleMatch?`<span class="rc-badge" style="background:rgba(74,222,128,0.1);color:var(--green);border:1px solid rgba(74,222,128,0.3)">✓ ROLE</span>`:''}
+      </div>
+      <span class="rc-emoji">${a.agent.emoji}</span>
+      <div class="rc-agent">${a.agent.name}</div>
+      <div class="rc-role">${a.role}</div>
+      ${a.prof?.rank?`<div class="rc-rank">🏅 ${a.prof.rank}</div>`:''}
+      <div class="rc-ability">${a.agent.ability}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════
+// SETTINGS
+// ════════════════════════════════
+function renderSettingsView(){
+  draft={};MAPS.forEach(m=>{draft[m.name]=[...(combos[m.name]||DEFAULT_COMBOS[m.name])];});
+  document.getElementById('settingsList').innerHTML=MAPS.map(m=>buildMcfg(m)).join('');
+}
+function buildMcfg(m){
+  const roles=draft[m.name]||[];const ok=roles.length===5;
+  const slots=roles.map((r,i)=>`
+    <div class="slot-item rc-${r}">
+      <button class="slot-role rc-${r}" onclick="cycleSlot('${m.name}',${i})">${r.substring(0,4).toUpperCase()}</button>
+      <button class="slot-del" onclick="removeSlot('${m.name}',${i})">✕</button>
+    </div>`).join('');
+  return`<div class="mcfg${m.isNew?' isnew':''}" id="mcfg-${m.name}">
+    <div class="mcfg-top">
+      <div class="mcfg-icon">${m.icon}</div>
+      <div class="mcfg-nm">${m.name}</div>
+      ${m.isNew?'<span class="mcfg-badge">NEW</span>':''}
+      ${m.src?`<span class="mcfg-src">⚡ ${m.src}</span>`:''}
+      <div class="mcfg-cnt ${ok?'ok':'warn'}">${roles.length}/5 ${ok?'✓':'⚠'}</div>
+    </div>
+    <div class="slot-row">${slots}${roles.length<5?`<button class="add-slot-btn" onclick="addSlot('${m.name}')">＋</button>`:''}</div>
+  </div>`;
+}
+function refreshMcfg(mn){
+  const tmp=document.createElement('div');tmp.innerHTML=buildMcfg(MAPS.find(x=>x.name===mn));
+  document.getElementById(`mcfg-${mn}`).replaceWith(tmp.firstElementChild);
+}
+function cycleSlot(mn,i){draft[mn][i]=ROLE_ORDER[(ROLE_ORDER.indexOf(draft[mn][i])+1)%ROLE_ORDER.length];refreshMcfg(mn);}
+function removeSlot(mn,i){draft[mn].splice(i,1);refreshMcfg(mn);}
+function addSlot(mn){if(draft[mn].length>=5){t('// ALREADY AT 5');return;}draft[mn].push('duelist');refreshMcfg(mn);}
+function saveSettings(){
+  const bad=MAPS.filter(m=>draft[m.name].length!==5);
+  if(bad.length){t(`// FIX: ${bad.map(m=>m.name).join(', ')} NEED EXACTLY 5`);return;}
+  MAPS.forEach(m=>{combos[m.name]=[...draft[m.name]];});
+  saveMyProfileToFirestore();
+  setTimeout(()=>showView('play'),600);
+}
+function resetDefaults(){MAPS.forEach(m=>{draft[m.name]=[...DEFAULT_COMBOS[m.name]];});document.getElementById('settingsList').innerHTML=MAPS.map(m=>buildMcfg(m)).join('');t('// DEFAULTS RESTORED');}
+
+window.cycleSlot=cycleSlot;window.removeSlot=removeSlot;window.addSlot=addSlot;
+window.saveSettings=saveSettings;window.resetDefaults=resetDefaults;
+
+// ════════════════════════════════
+// VIEWS
+// ════════════════════════════════
+function showView(id){
+  closeAllDD();
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(tb=>tb.classList.remove('active'));
+  document.getElementById('view-'+id)?.classList.add('active');
+  const idx={play:0,myprofile:1,squad:2,settings:3}[id];
+  if(idx!==undefined)document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  if(id==='settings')renderSettingsView();
+  if(id==='myprofile')renderMyProfileUI();
+  if(id==='squad'){loadSquadProfiles().then(renderSquad);}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+window.showView=showView;
+window.selectMap=selectMap;
+window.onPiInput=onPiInput;window.onPiFocus=onPiFocus;window.onPiKey=onPiKey;
+window.clearSlot=clearSlot;window.clearPlayers=clearPlayers;
+window.doRandomize=doRandomize;window.hideResults=hideResults;
+window.pickProfile=pickProfile;
+
+</script>
+</body>
+</html>
