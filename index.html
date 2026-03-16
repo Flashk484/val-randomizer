@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#09090b">
+<title>VALORANT Agent Randomizer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(240 3.7% 15.9%)",
+        background: "hsl(240 10% 3.9%)",
+        foreground: "hsl(0 0% 98%)",
+        card: { DEFAULT: "hsl(240 10% 5.9%)", foreground: "hsl(0 0% 98%)" },
+        muted: { DEFAULT: "hsl(240 3.7% 15.9%)", foreground: "hsl(240 5% 64.9%)" },
+        val: { red:"#ff4655", teal:"#00c8b8", gold:"#c9a84c", purple:"#a855f7", amber:"#f59e0b", green:"#4ade80" }
+      },
+      fontFamily: {
+        sans: ["Inter","sans-serif"],
+        mono: ["JetBrains Mono","monospace"],
+        display: ["Bebas Neue","cursive"]
+      }
+    }
+  }
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;}
+body{font-family:"Inter",sans-serif;background:hsl(240 10% 3.9%);color:hsl(0 0% 98%);min-height:100vh;}
+/* shadcn components */
+.card{background:hsl(240 10% 5.9%);border:1px solid hsl(240 3.7% 15.9%);border-radius:.5rem;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:.375rem;font-size:.875rem;font-weight:500;transition:all .2s;cursor:pointer;border:none;outline:none;padding:.5rem 1rem;white-space:nowrap;font-family:"Inter",sans-serif;}
+.btn:disabled{opacity:.5;pointer-events:none;}
+.btn-primary{background:hsl(0 72% 51%);color:hsl(0 0% 98%);}
+.btn-primary:hover{background:hsl(0 65% 46%);box-shadow:0 4px 14px rgba(255,70,85,.35);}
+.btn-outline{background:transparent;color:hsl(0 0% 98%);border:1px solid hsl(240 3.7% 15.9%);}
+.btn-outline:hover{background:hsl(240 3.7% 15.9%);}
+.btn-ghost{background:transparent;color:hsl(0 0% 98%);border:1px solid transparent;}
+.btn-ghost:hover{background:hsl(240 3.7% 15.9%);}
+.btn-sm{padding:.375rem .75rem;font-size:.8125rem;}
+.btn-lg{padding:.75rem 1.5rem;font-size:1rem;}
+.input{width:100%;background:transparent;border:1px solid hsl(240 3.7% 15.9%);border-radius:.375rem;color:hsl(0 0% 98%);font-size:.875rem;padding:.5rem .75rem;outline:none;transition:border-color .2s,box-shadow .2s;font-family:"Inter",sans-serif;}
+.input::placeholder{color:hsl(240 5% 44.9%);}
+.input:focus{border-color:hsl(0 0% 80%);box-shadow:0 0 0 2px rgba(255,255,255,.07);}
+.label{font-size:.875rem;font-weight:500;margin-bottom:.375rem;display:block;}
+.label-sm{font-size:.75rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:hsl(240 5% 64.9%);margin-bottom:.375rem;display:block;font-family:"JetBrains Mono",monospace;}
+.tabs-list{background:hsl(240 3.7% 15.9%);border-radius:.5rem;padding:.25rem;display:inline-flex;gap:.25rem;}
+.tab{padding:.375rem .875rem;border-radius:.375rem;font-size:.875rem;font-weight:500;color:hsl(240 5% 64.9%);background:transparent;border:none;cursor:pointer;transition:all .15s;white-space:nowrap;font-family:"Inter",sans-serif;}
+.tab.active{background:hsl(240 10% 3.9%);color:hsl(0 0% 98%);box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.select{width:100%;background:hsl(240 10% 5.9%);border:1px solid hsl(240 3.7% 15.9%);border-radius:.375rem;color:hsl(0 0% 98%);font-size:.875rem;padding:.5rem .75rem;outline:none;cursor:pointer;font-family:"Inter",sans-serif;}
+.select:focus{border-color:hsl(0 0% 80%);}
+.select option{background:hsl(240 10% 3.9%);}
+.badge{display:inline-flex;align-items:center;border-radius:9999px;padding:.125rem .625rem;font-size:.75rem;font-weight:500;border:1px solid transparent;font-family:"JetBrains Mono",monospace;}
+.badge-outline{border-color:hsl(240 3.7% 25%);color:hsl(0 0% 98%);background:transparent;}
+.sep{height:1px;background:hsl(240 3.7% 15.9%);}
+/* Views */
+.view{display:none;}
+.view.active{display:block;animation:fadeUp .28s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+/* Loading bar */
+@keyframes loadBar{from{width:0%}to{width:100%}}
+.load-bar-fill{animation:loadBar 1s ease forwards;width:0;height:100%;background:#ff4655;}
+/* Map tiles */
+.map-tile{position:relative;overflow:hidden;cursor:pointer;transition:all .16s;border-radius:.5rem;border:1px solid hsl(240 3.7% 15.9%);}
+.map-tile::before{content:"";position:absolute;inset:0;background:var(--mc,rgba(255,70,85,.1));opacity:0;transition:opacity .2s;border-radius:.5rem;}
+.map-tile:hover{transform:translateY(-2px);border-color:rgba(255,70,85,.4)!important;}
+.map-tile:hover::before{opacity:.8;}
+.map-tile.sel{border-color:#ff4655!important;box-shadow:0 0 0 1px rgba(255,70,85,.5),0 0 16px rgba(255,70,85,.2);}
+.map-tile.sel::before{opacity:1;}
+/* Role colours */
+.role-duelist{color:#ff4655;border-color:rgba(255,70,85,.4);background:rgba(255,70,85,.1);}
+.role-initiator{color:#00c8b8;border-color:rgba(0,200,184,.4);background:rgba(0,200,184,.1);}
+.role-controller{color:#a855f7;border-color:rgba(168,85,247,.4);background:rgba(168,85,247,.1);}
+.role-sentinel{color:#f59e0b;border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.1);}
+.rc-duelist{color:#ff4655!important;border-color:rgba(255,70,85,.4)!important;background:rgba(255,70,85,.1)!important;}
+.rc-initiator{color:#00c8b8!important;border-color:rgba(0,200,184,.4)!important;background:rgba(0,200,184,.1)!important;}
+.rc-controller{color:#a855f7!important;border-color:rgba(168,85,247,.4)!important;background:rgba(168,85,247,.1)!important;}
+.rc-sentinel{color:#f59e0b!important;border-color:rgba(245,158,11,.4)!important;background:rgba(245,158,11,.1)!important;}
+/* Slot items */
+.slot-item{display:flex;align-items:center;border:1px solid hsl(240 3.7% 15.9%);border-radius:.25rem;overflow:hidden;}
+.slot-role{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.05em;padding:.25rem .625rem;background:transparent;border:none;cursor:pointer;text-transform:uppercase;}
+.slot-del{font-size:.7rem;padding:.25rem .5rem;background:transparent;border:none;border-left:1px solid hsl(240 3.7% 15.9%);color:hsl(240 5% 44.9%);cursor:pointer;transition:all .15s;}
+.slot-del:hover{background:rgba(255,70,85,.15);color:#ff4655;}
+/* Autocomplete dropdown */
+.ac-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;background:hsl(240 10% 5.9%);border:1px solid hsl(240 3.7% 20%);border-radius:.5rem;z-index:200;display:none;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.6);max-height:220px;overflow-y:auto;}
+.ac-dd.open{display:flex;}
+.ac-item{display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;cursor:pointer;transition:background .1s;border-bottom:1px solid hsl(240 3.7% 12%);}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.focused{background:hsl(240 3.7% 10%);}
+.pi-clear{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;color:hsl(240 5% 44.9%);font-size:.75rem;cursor:pointer;z-index:3;display:none;padding:.2rem;border-radius:.25rem;transition:color .15s;}
+.pi-clear:hover{color:#ff4655;}
+.pi-clear.vis{display:flex;}
+/* Result cards */
+.rc{background:hsl(240 10% 5.9%);border:1px solid hsl(240 3.7% 15.9%);border-top:2px solid var(--rc,#ff4655);border-radius:.5rem;padding:1rem;position:relative;overflow:hidden;animation:cardIn .4s cubic-bezier(.22,1,.36,1) both;}
+@keyframes cardIn{from{opacity:0;transform:translateY(16px) scale(.96);}to{opacity:1;transform:translateY(0) scale(1);}}
+.rc::after{content:attr(data-role);position:absolute;bottom:-1rem;right:-.25rem;font-family:"Bebas Neue",cursive;font-size:3.5rem;color:var(--rc);opacity:.05;letter-spacing:.1em;pointer-events:none;}
+/* Profile badge */
+.profile-badge{display:flex;align-items:center;gap:.375rem;background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.2);border-radius:.375rem;padding:.25rem .5rem;cursor:pointer;transition:border-color .15s;}
+.profile-badge:hover{border-color:rgba(201,168,76,.5);}
+.no-profile-hint{font-family:"JetBrains Mono",monospace;font-size:.6875rem;color:hsl(240 5% 44.9%);letter-spacing:.05em;}
+/* Role pick buttons */
+.rpb{font-size:.75rem;font-weight:500;padding:.375rem .75rem;border-radius:.375rem;border:1px solid hsl(240 3.7% 15.9%);background:transparent;color:hsl(240 5% 64.9%);cursor:pointer;transition:all .14s;font-family:"JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.05em;}
+.rpb.sel-any{background:hsl(240 3.7% 15.9%);color:hsl(0 0% 98%);border-color:hsl(240 3.7% 25%);}
+.rpb.sel-duelist{background:rgba(255,70,85,.15);border-color:rgba(255,70,85,.5);color:#ff4655;}
+.rpb.sel-initiator{background:rgba(0,200,184,.15);border-color:rgba(0,200,184,.5);color:#00c8b8;}
+.rpb.sel-controller{background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.5);color:#a855f7;}
+.rpb.sel-sentinel{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.5);color:#f59e0b;}
+/* Fav agent button */
+.fab{font-size:.75rem;font-weight:500;padding:.3125rem .625rem;border-radius:.375rem;border:1px solid hsl(240 3.7% 15.9%);background:transparent;cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:.25rem;color:hsl(240 5% 64.9%);font-family:"Inter",sans-serif;}
+.fab:hover{background:hsl(240 3.7% 15.9%);color:hsl(0 0% 98%);}
+.fab.fav{border-color:rgba(201,168,76,.5);background:rgba(201,168,76,.1);color:#c9a84c;}
+/* Squad fav chip */
+.sq-fav{font-family:"JetBrains Mono",monospace;font-size:.6875rem;padding:.125rem .5rem;border:1px solid;border-radius:.25rem;}
+/* Profile modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:1rem;}
+.modal-overlay.hidden{display:none;}
+.modal-box{background:hsl(240 10% 5.9%);border:1px solid hsl(240 3.7% 20%);border-radius:.75rem;width:min(560px,100%);max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.7);}
+/* Toast */
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:hsl(240 10% 7%);border:1px solid hsl(240 3.7% 18%);border-radius:.5rem;padding:.625rem 1.25rem;font-family:"JetBrains Mono",monospace;font-size:.75rem;letter-spacing:.05em;color:hsl(0 0% 98%);transition:transform .3s cubic-bezier(.22,1,.36,1);z-index:10000;white-space:nowrap;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+#toast.show{transform:translateX(-50%) translateY(0);}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:hsl(240 10% 3.9%);}::-webkit-scrollbar-thumb{background:hsl(240 3.7% 18%);border-radius:3px;}
+</style>
+</head>
+<body class="bg-background text-foreground antialiased">
+<div class="max-w-6xl mx-auto px-4 py-6 pb-24">
+
+  <!-- HEADER -->
+  <header class="flex items-end justify-between mb-8 pb-5 border-b border-border flex-wrap gap-3">
+    <div>
+      <p class="font-mono text-xs text-val-red tracking-widest mb-1">// VCT PRO META · TEAM COMPOSER</p>
+      <h1 class="font-display text-5xl md:text-6xl tracking-widest leading-none">AGENT <span class="text-val-red">RANDOMIZER</span></h1>
+    </div>
+    <nav class="tabs-list">
+      <button class="tab active" onclick="showView('play')">▶ Play</button>
+      <button class="tab" onclick="showView('profiles')">👤 Profiles</button>
+      <button class="tab" onclick="showView('settings')">⚙ Settings</button>
+    </nav>
+  </header>
+
+  <!-- ══ PLAY VIEW ══ -->
+  <div class="view active" id="view-play">
+    <div class="mb-6">
+      <div class="flex items-center gap-2 mb-4">
+        <h2 class="text-lg font-semibold">Select Map</h2>
+        <span class="badge badge-outline text-xs">12 maps · VCT 2025</span>
+      </div>
+      <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2" id="playMapsGrid"></div>
+    </div>
+
+    <div class="card mb-4 hidden" id="mapBanner">
+      <div class="flex items-center justify-between p-4 flex-wrap gap-3">
+        <div>
+          <div class="font-display text-2xl tracking-widest" id="bnName"></div>
+          <div class="font-mono text-xs text-val-gold mt-0.5" id="bnSrc"></div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap" id="bnRoles"></div>
+        <button class="btn btn-outline btn-sm gap-1.5" onclick="showView('settings')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Edit Roles
+        </button>
+      </div>
+    </div>
+
+    <div class="card mb-4 hidden" id="playSection">
+      <div class="p-4 pb-2 flex items-center justify-between flex-wrap gap-2">
+        <h2 class="text-base font-semibold">Players</h2>
+        <span class="font-mono text-xs text-muted-foreground">type name or pick from profiles ↓</span>
+      </div>
+      <div class="p-4 pt-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3" id="playersGrid"></div>
+      </div>
+    </div>
+
+    <div class="hidden flex gap-3 mb-8" id="goRow">
+      <button class="btn btn-primary btn-lg font-semibold" onclick="doRandomize()">🎲 Randomize Agents</button>
+      <button class="btn btn-outline btn-lg" onclick="clearPlayers()">Clear Names</button>
+    </div>
+
+    <div id="resultsSection" class="hidden">
+      <div class="sep mb-6"></div>
+      <div class="flex items-center gap-3 mb-4 flex-wrap">
+        <h2 class="text-lg font-semibold">Assignments</h2>
+        <span class="font-mono text-xs text-muted-foreground" id="resSub"></span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6" id="resultsGrid"></div>
+      <div class="flex gap-3">
+        <button class="btn btn-primary font-semibold" onclick="doRandomize()">🎲 Reroll</button>
+        <button class="btn btn-outline" onclick="hideResults()">↑ Change Map</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PROFILES VIEW ══ -->
+  <div class="view" id="view-profiles">
+    <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+      <h2 class="text-xl font-semibold">Player Profiles</h2>
+      <button class="btn btn-primary btn-sm gap-1.5" onclick="openAddProfile()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Profile
+      </button>
+    </div>
+    <p class="text-sm text-muted-foreground mb-6 font-mono">Profiles auto-suggest when typing player names · Preferred role is prioritised during randomisation</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="profilesGrid"></div>
+  </div>
+
+  <!-- ══ SETTINGS VIEW ══ -->
+  <div class="view" id="view-settings">
+    <h2 class="text-xl font-semibold mb-1">Role Combos per Map</h2>
+    <p class="text-sm text-muted-foreground mb-6 font-mono">Click a role pill to cycle it · + adds a slot · ✕ removes · Each map needs exactly 5</p>
+    <div class="space-y-2 mb-6" id="settingsList"></div>
+    <div class="flex gap-3 mb-6">
+      <button class="btn btn-primary font-semibold gap-2" onclick="saveSettings()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save All
+      </button>
+      <button class="btn btn-outline" onclick="resetDefaults()">↺ Reset Defaults</button>
+    </div>
+    <div class="sep mb-5"></div>
+    <div class="font-mono text-xs text-muted-foreground uppercase tracking-widest mb-3">Legend</div>
+    <div class="flex gap-2 flex-wrap">
+      <span class="badge role-duelist border rounded-full px-3 py-1">Duelist</span>
+      <span class="badge role-initiator border rounded-full px-3 py-1">Initiator</span>
+      <span class="badge role-controller border rounded-full px-3 py-1">Controller</span>
+      <span class="badge role-sentinel border rounded-full px-3 py-1">Sentinel</span>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- ══ PROFILE MODAL ══ -->
+<div class="modal-overlay hidden" id="profileModal" onclick="closeProfileModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="p-6 border-b border-border flex items-center justify-between">
+      <h3 class="font-display text-2xl tracking-widest" id="modalTitle">ADD PROFILE</h3>
+      <button class="btn btn-ghost btn-sm text-muted-foreground" onclick="closeProfileModal()">✕</button>
+    </div>
+    <div class="p-6 space-y-5">
+      <div>
+        <label class="label">Player Name</label>
+        <input id="mName" type="text" class="input" placeholder="Enter name…" maxlength="22">
+      </div>
+      <div>
+        <label class="label">Emoji / Avatar</label>
+        <div class="flex gap-2 flex-wrap" id="emojiPicker">
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🎮">🎮</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="⚔️">⚔️</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🏆">🏆</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🎯">🎯</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="💀">💀</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🔫">🔫</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🧠">🧠</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="⚡">⚡</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🌟">🌟</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🔥">🔥</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🐉">🐉</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🦊">🦊</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🦁">🦁</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="👻">👻</span>
+          <span class="text-2xl cursor-pointer hover:scale-125 transition-transform select-none" onclick="pickEmoji(this)" data-e="🤖">🤖</span>
+        </div>
+        <div class="mt-2 text-sm text-muted-foreground font-mono">Selected: <span id="selectedEmoji" class="text-lg">🎮</span></div>
+      </div>
+      <div>
+        <label class="label">Rank <span class="text-muted-foreground text-xs font-normal">(optional)</span></label>
+        <select id="mRank" class="select">
+          <option value="">Select rank…</option>
+          <option>Iron</option><option>Bronze</option><option>Silver</option>
+          <option>Gold</option><option>Platinum</option><option>Diamond</option>
+          <option>Ascendant</option><option>Immortal</option><option>Radiant</option>
+        </select>
+      </div>
+      <div>
+        <label class="label">Preferred Role</label>
+        <div class="flex gap-2 flex-wrap mt-1" id="mRolePick">
+          <button class="rpb sel-any" onclick="setModalRole(null)">Any</button>
+          <button class="rpb" onclick="setModalRole('duelist')">Duelist</button>
+          <button class="rpb" onclick="setModalRole('initiator')">Initiator</button>
+          <button class="rpb" onclick="setModalRole('controller')">Controller</button>
+          <button class="rpb" onclick="setModalRole('sentinel')">Sentinel</button>
+        </div>
+      </div>
+      <div>
+        <label class="label">Favourite Agents <span class="text-muted-foreground text-xs font-normal">(max 4 · click to toggle)</span></label>
+        <div class="flex flex-wrap gap-2 mt-1" id="mFavGrid"></div>
+      </div>
+    </div>
+    <div class="p-6 pt-0 flex gap-3">
+      <button class="btn btn-primary font-semibold flex-1" onclick="saveProfile()">Save Profile</button>
+      <button class="btn btn-outline" onclick="closeProfileModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════
+// DATA
+// ══════════════════════════════════
+const MAPS=[
+  {name:"Ascent",  icon:"🏛️",type:"Standard", color:"rgba(201,168,76,.15)", src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Bind",    icon:"🌅",type:"No Mid",    color:"rgba(255,140,50,.15)", src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Haven",   icon:"🏯",type:"3-Site",    color:"rgba(80,200,140,.15)", src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Split",   icon:"⛩️",type:"Vertical",  color:"rgba(255,90,90,.15)",  src:"VCT Masters Toronto 2025"},
+  {name:"Icebox",  icon:"❄️",type:"Vertical",  color:"rgba(80,190,255,.15)", src:"VCT Masters Toronto 2025"},
+  {name:"Breeze",  icon:"🌊",type:"Open",      color:"rgba(80,140,255,.15)", src:"VCT 2025 Stage 1"},
+  {name:"Fracture",icon:"⚡",type:"Unique",    color:"rgba(200,100,255,.15)",src:"VCT 2025 Stage 1"},
+  {name:"Pearl",   icon:"🐚",type:"Standard",  color:"rgba(80,220,200,.15)", src:"VCT Masters Toronto 2025"},
+  {name:"Lotus",   icon:"🌸",type:"3-Site",    color:"rgba(255,140,190,.15)",src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Sunset",  icon:"🌆",type:"Standard",  color:"rgba(255,180,60,.15)", src:"VCT Masters Toronto 2025"},
+  {name:"Abyss",   icon:"🌀",type:"No Walls",  color:"rgba(70,90,220,.15)",  src:"VCT Champions 2025 · vlr.gg"},
+  {name:"Corrode", icon:"⚗️",type:"Standard",  color:"rgba(160,210,120,.15)",isNew:true,src:"VCT Champions 2025 · vlr.gg"},
+];
+const DEFAULT_COMBOS={
+  Ascent:["duelist","initiator","initiator","controller","sentinel"],
+  Bind:["duelist","initiator","controller","controller","sentinel"],
+  Haven:["duelist","initiator","initiator","controller","sentinel"],
+  Split:["duelist","initiator","controller","controller","sentinel"],
+  Icebox:["duelist","initiator","controller","sentinel","sentinel"],
+  Breeze:["duelist","initiator","controller","controller","sentinel"],
+  Fracture:["duelist","initiator","initiator","controller","sentinel"],
+  Pearl:["duelist","initiator","controller","controller","sentinel"],
+  Lotus:["duelist","initiator","controller","controller","sentinel"],
+  Sunset:["duelist","initiator","initiator","controller","sentinel"],
+  Abyss:["duelist","initiator","initiator","controller","controller"],
+  Corrode:["duelist","initiator","controller","controller","sentinel"],
+};
+const AGENTS={
+  duelist:[
+    {name:"Jett",emoji:"💨",ability:"Dash & Bladestorm"},
+    {name:"Reyna",emoji:"💜",ability:"Devour & Dismiss"},
+    {name:"Phoenix",emoji:"🔥",ability:"Hot Hands & Run it Back"},
+    {name:"Neon",emoji:"⚡",ability:"High Gear & Overdrive"},
+    {name:"Yoru",emoji:"🌀",ability:"Fakeout & Dimensional Drift"},
+    {name:"Iso",emoji:"🎯",ability:"Double Tap & Kill Contract"},
+    {name:"Raze",emoji:"💥",ability:"Blast Pack & Showstopper"},
+    {name:"Waylay",emoji:"🌊",ability:"Refract & Recursion"},
+  ],
+  initiator:[
+    {name:"Sova",emoji:"🏹",ability:"Recon Bolt & Hunter's Fury"},
+    {name:"Breach",emoji:"✊",ability:"Fault Line & Rolling Thunder"},
+    {name:"Skye",emoji:"🌿",ability:"Trailblazer & Seekers"},
+    {name:"KAY/O",emoji:"🤖",ability:"ZERO/POINT & NULL/CMD"},
+    {name:"Fade",emoji:"👁️",ability:"Haunt & Nightfall"},
+    {name:"Gekko",emoji:"🦎",ability:"Wingman & Thrash"},
+    {name:"Tejo",emoji:"🛸",ability:"Stealth Drone & Guided Salvo"},
+  ],
+  controller:[
+    {name:"Brimstone",emoji:"🪖",ability:"Sky Smokes & Orbital Strike"},
+    {name:"Viper",emoji:"☠️",ability:"Toxic Screen & Viper's Pit"},
+    {name:"Omen",emoji:"👻",ability:"Dark Cover & From the Shadows"},
+    {name:"Astra",emoji:"⭐",ability:"Stars & Cosmic Divide"},
+    {name:"Harbor",emoji:"🌊",ability:"High Tide & Reckoning"},
+    {name:"Clove",emoji:"☘️",ability:"Pick-Me-Up & Not Dead Yet"},
+  ],
+  sentinel:[
+    {name:"Sage",emoji:"💚",ability:"Slow Orb & Resurrection"},
+    {name:"Cypher",emoji:"🕵️",ability:"Trapwire & Neural Theft"},
+    {name:"Killjoy",emoji:"🔧",ability:"Turret & Lockdown"},
+    {name:"Chamber",emoji:"🔫",ability:"Rendezvous & Tour de Force"},
+    {name:"Deadlock",emoji:"🕸️",ability:"GravNet & Annihilation"},
+    {name:"Vyse",emoji:"🪤",ability:"Arc Rose & Steel Garden"},
+  ],
+};
+const ROLE_ORDER=["duelist","initiator","controller","sentinel"];
+const ROLE_COLORS={duelist:"#ff4655",initiator:"#00c8b8",controller:"#a855f7",sentinel:"#f59e0b"};
+const ALL_AGENTS=Object.values(AGENTS).flat();
+
+// ══════════════════════════════════
+// STATE (localStorage)
+// ══════════════════════════════════
+let combos={};
+let draft={};
+let profiles=[];   // [{id,name,emoji,rank,preferredRole,favAgents}]
+let selMap=null;
+let acIdx={};
+let editingId=null;
+let modalRole=null;
+let modalFavs=[];
+let modalEmoji="🎮";
+
+function load(){
+  try{
+    const s=localStorage.getItem("val_noauth");
+    if(s){const d=JSON.parse(s);combos=d.combos||{};profiles=d.profiles||[];}
+  }catch(e){}
+  MAPS.forEach(m=>{if(!combos[m.name])combos[m.name]=[...DEFAULT_COMBOS[m.name]];});
+}
+function save(){localStorage.setItem("val_noauth",JSON.stringify({combos,profiles}));}
+
+function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function t(msg){const el=document.getElementById("toast");el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2500);}
+
+// ══════════════════════════════════
+// VIEWS
+// ══════════════════════════════════
+function showView(id){
+  closeAllDD();
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(tb=>tb.classList.remove("active"));
+  document.getElementById("view-"+id)?.classList.add("active");
+  const idx={play:0,profiles:1,settings:2}[id];
+  if(idx!==undefined)document.querySelectorAll(".tab")[idx].classList.add("active");
+  if(id==="settings")renderSettings();
+  if(id==="profiles")renderProfiles();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+// ══════════════════════════════════
+// MAP
+// ══════════════════════════════════
+function renderPlayMaps(){
+  document.getElementById("playMapsGrid").innerHTML=MAPS.map((m,i)=>`
+    <div class="map-tile h-20 ${m.isNew?"border-val-gold/30":""} ${selMap===i?"sel":""}" id="ptile-${i}" onclick="selectMap(${i})" style="--mc:${m.color}">
+      ${m.isNew?'<div class="absolute top-1.5 right-1.5 text-[7px] font-bold font-mono bg-val-gold text-black px-1 rounded z-10">NEW</div>':''}
+      <div class="absolute top-2 right-2 text-base opacity-20">${m.icon}</div>
+      <div class="absolute bottom-0 left-0 right-0 p-2">
+        <div class="font-display text-sm tracking-widest leading-none ${m.isNew?"text-val-gold":""}">${m.name}</div>
+        <div class="font-mono text-[8px] text-muted-foreground">${m.type}</div>
+      </div>
+      ${selMap===i?'<div class="absolute top-1.5 left-1.5 w-3 h-3 bg-val-red flex items-center justify-center text-[7px] rounded-sm">✓</div>':''}
+    </div>`).join("");
+}
+
+function selectMap(i){
+  document.querySelectorAll(".map-tile").forEach(t=>t.classList.remove("sel"));
+  document.getElementById(`ptile-${i}`)?.classList.add("sel");
+  selMap=i;
+  refreshBanner();
+  buildPlayerInputs();
+  document.getElementById("mapBanner").classList.remove("hidden");
+  document.getElementById("playSection").classList.remove("hidden");
+  document.getElementById("goRow").classList.remove("hidden");
+  document.getElementById("resultsSection").classList.add("hidden");
+  const m=MAPS[i];
+  document.getElementById("mapBanner").className="card mb-4"+(m.isNew?" border-val-gold/40":"");
+}
+
+function refreshBanner(){
+  if(selMap===null)return;
+  const m=MAPS[selMap];
+  const roles=combos[m.name]||DEFAULT_COMBOS[m.name];
+  document.getElementById("bnName").innerHTML=`${m.icon} ${m.name}`;
+  document.getElementById("bnSrc").textContent=m.src?`// ${m.src}`:"";
+  document.getElementById("bnRoles").innerHTML=roles.map(r=>`<span class="badge role-${r} border rounded-full px-3 py-1 text-xs">${r}</span>`).join("");
+}
+
+// ══════════════════════════════════
+// PLAYER INPUTS + AUTOCOMPLETE
+// ══════════════════════════════════
+function buildPlayerInputs(){
+  const ex=[1,2,3,4,5].map(n=>document.getElementById(`pi${n}`)?.value||"");
+  document.getElementById("playersGrid").innerHTML=[1,2,3,4,5].map(n=>`
+    <div class="flex flex-col gap-1.5">
+      <label class="label-sm">Player ${n}</label>
+      <div class="relative">
+        <input class="input pr-7" id="pi${n}" placeholder="Type or pick…" maxlength="22" autocomplete="off"
+               value="${esc(ex[n-1])}"
+               oninput="onPiInput(${n})" onkeydown="onPiKey(event,${n})" onfocus="onPiFocus(${n})">
+        <button class="pi-clear ${ex[n-1]?"vis":""}" id="clr${n}" onclick="clearSlot(${n})" tabindex="-1">✕</button>
+        <div class="ac-dd" id="acd${n}"></div>
+      </div>
+      <div id="pbadge${n}">${renderBadge(findProfile(ex[n-1]))}</div>
+    </div>`).join("");
+  document.removeEventListener("click",onDocClick,true);
+  document.addEventListener("click",onDocClick,{capture:true});
+}
+
+function onDocClick(e){if(!e.target.closest(".relative"))closeAllDD();}
+function closeAllDD(){document.querySelectorAll(".ac-dd").forEach(d=>d.classList.remove("open"));}
+
+function findProfile(name){
+  if(!name)return null;
+  return profiles.find(p=>p.name.toLowerCase()===name.toLowerCase())||null;
+}
+
+function openDD(n,q){
+  const dd=document.getElementById(`acd${n}`);if(!dd)return;
+  const ql=q.trim().toLowerCase();
+  const matches=ql?profiles.filter(p=>p.name.toLowerCase().includes(ql)):profiles;
+  if(!matches.length){
+    dd.innerHTML=`<div class="px-3 py-2 font-mono text-xs text-muted-foreground">${profiles.length?'No profiles match':'No profiles yet — go to Profiles tab'}</div>`;
+  } else {
+    dd.innerHTML=matches.map((p,i)=>{
+      const rc=ROLE_COLORS[p.preferredRole]||"rgba(255,255,255,.3)";
+      return`<div class="ac-item" id="aci-${n}-${i}" onclick="pickProfile(${n},'${esc(p.name)}')">
+        <div class="w-7 h-7 rounded-full bg-muted border border-border flex items-center justify-center text-sm flex-shrink-0">${p.emoji||"🎮"}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate">${esc(p.name)}${p.rank?` <span class="text-muted-foreground text-xs">· ${p.rank}</span>`:""}</div>
+          <div class="font-mono text-xs" style="color:${rc}">${(p.preferredRole||"any").toUpperCase()}${p.favAgents?.length?" · "+p.favAgents.slice(0,2).join(", "):""}</div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  acIdx[n]=-1;
+  dd.classList.add("open");
+}
+
+function pickProfile(n,name){
+  document.getElementById(`pi${n}`).value=name;
+  closeAllDD();uClr(n);
+  document.getElementById(`pbadge${n}`).innerHTML=renderBadge(findProfile(name));
+  const nx=document.getElementById(`pi${n+1}`);if(nx)nx.focus();
+}
+
+function onPiInput(n){const v=document.getElementById(`pi${n}`)?.value||"";uClr(n);document.getElementById(`pbadge${n}`).innerHTML=renderBadge(v.trim()?findProfile(v.trim()):null);openDD(n,v);}
+function onPiFocus(n){openDD(n,document.getElementById(`pi${n}`)?.value||"");}
+function onPiKey(e,n){
+  const dd=document.getElementById(`acd${n}`);
+  const items=dd?.querySelectorAll(".ac-item")||[];
+  if(e.key==="ArrowDown"){e.preventDefault();acIdx[n]=Math.min((acIdx[n]??-1)+1,items.length-1);hlt(n,items);}
+  else if(e.key==="ArrowUp"){e.preventDefault();acIdx[n]=Math.max((acIdx[n]??0)-1,-1);hlt(n,items);}
+  else if(e.key==="Enter"){const fi=acIdx[n]??-1;if(fi>=0&&fi<items.length){items[fi].click();}else{closeAllDD();doRandomize();}}
+  else if(e.key==="Escape"||e.key==="Tab"){closeAllDD();}
+}
+function hlt(n,items){items.forEach((el,i)=>el.classList.toggle("focused",i===(acIdx[n]??-1)));const fi=acIdx[n]??-1;if(fi>=0&&items[fi])items[fi].scrollIntoView({block:"nearest"});}
+function clearSlot(n){document.getElementById(`pi${n}`).value="";uClr(n);document.getElementById(`pbadge${n}`).innerHTML=renderBadge(null);closeAllDD();document.getElementById(`pi${n}`)?.focus();}
+function uClr(n){document.getElementById(`clr${n}`)?.classList.toggle("vis",!!(document.getElementById(`pi${n}`)?.value));}
+
+function renderBadge(prof){
+  if(!prof)return`<div class="no-profile-hint">not in profiles</div>`;
+  const rc=ROLE_COLORS[prof.preferredRole]||"rgba(255,255,255,.4)";
+  const role=(prof.preferredRole||"any").toUpperCase();
+  const favStr=(prof.favAgents||[]).slice(0,2).join(" · ")||"no favs";
+  return`<div class="profile-badge" onclick="showView('profiles')">
+    <div class="text-sm flex-shrink-0">${prof.emoji||"🎮"}</div>
+    <span class="font-mono text-xs truncate" style="color:${rc}">${role}${prof.rank?" · "+prof.rank:""} · ${favStr}</span>
+  </div>`;
+}
+
+function clearPlayers(){[1,2,3,4,5].forEach(n=>clearSlot(n));}
+function hideResults(){document.getElementById("resultsSection").classList.add("hidden");window.scrollTo({top:0,behavior:"smooth"});}
+
+// ══════════════════════════════════
+// RANDOMIZE
+// ══════════════════════════════════
+function doRandomize(){
+  if(selMap===null){t("Select a map first");return;}
+  const m=MAPS[selMap];
+  const mapRoles=[...(combos[m.name]||DEFAULT_COMBOS[m.name])].slice(0,5);
+  const players=[1,2,3,4,5].map(n=>({name:(document.getElementById(`pi${n}`)?.value.trim()||`Player ${n}`),prof:findProfile(document.getElementById(`pi${n}`)?.value.trim())}));
+
+  const rolePool=[...mapRoles];
+  const assigned=new Array(5).fill(null);
+  const usedRI=new Set();
+  players.forEach((p,i)=>{if(p.prof?.preferredRole){const ri=rolePool.findIndex((r,idx)=>r===p.prof.preferredRole&&!usedRI.has(idx));if(ri!==-1){assigned[i]=rolePool[ri];usedRI.add(ri);}}});
+  const rem=rolePool.filter((_,idx)=>!usedRI.has(idx)).sort(()=>Math.random()-.5);
+  let ri=0;players.forEach((p,i)=>{if(!assigned[i])assigned[i]=rem[ri++];});
+
+  const usedA=new Set();
+  const asgn=players.map((p,i)=>{
+    const role=assigned[i];
+    let pool=AGENTS[role].filter(a=>!usedA.has(a.name));
+    let agent=null;let fm=false;
+    if(p.prof?.favAgents?.length){const fav=pool.filter(a=>p.prof.favAgents.includes(a.name));if(fav.length){agent=fav[Math.floor(Math.random()*fav.length)];fm=true;}}
+    if(!agent)agent=pool[Math.floor(Math.random()*pool.length)];
+    usedA.add(agent.name);
+    return{player:p.name,prof:p.prof,role,agent,isFavMatch:fm,roleMatch:p.prof?.preferredRole===role};
+  });
+
+  // Render results
+  document.getElementById("resSub").textContent=`${m.name} · ${m.src||m.type}`;
+  document.getElementById("resultsGrid").innerHTML=asgn.map((a,i)=>{
+    const rc=ROLE_COLORS[a.role];
+    return`<div class="rc" data-role="${a.role.toUpperCase()}" style="--rc:${rc};animation-delay:${i*.1}s">
+      <div class="font-mono text-xs text-muted-foreground mb-2 truncate">${esc(a.player)}</div>
+      <div class="flex gap-1.5 flex-wrap mb-2 min-h-[18px]">
+        ${a.isFavMatch?`<span class="badge text-xs font-mono" style="background:rgba(201,168,76,.12);color:#c9a84c;border-color:rgba(201,168,76,.3)">⭐ Fav</span>`:""}
+        ${a.roleMatch?`<span class="badge text-xs font-mono" style="background:rgba(74,222,128,.1);color:#4ade80;border-color:rgba(74,222,128,.3)">✓ Role</span>`:""}
+      </div>
+      <div class="text-2xl mb-1">${a.agent.emoji}</div>
+      <div class="font-display text-2xl tracking-widest leading-none mb-0.5">${a.agent.name}</div>
+      <div class="font-mono text-xs mb-2" style="color:${rc}">${a.role}</div>
+      ${a.prof?.rank?`<div class="text-xs text-muted-foreground mb-1">🏅 ${a.prof.rank}</div>`:""}
+      <div class="text-xs text-muted-foreground border-t border-border pt-2 mt-1">${a.agent.ability}</div>
+    </div>`;
+  }).join("");
+  document.getElementById("resultsSection").classList.remove("hidden");
+  setTimeout(()=>document.getElementById("resultsSection").scrollIntoView({behavior:"smooth",block:"start"}),80);
+}
+
+// ══════════════════════════════════
+// PROFILES VIEW
+// ══════════════════════════════════
+function renderProfiles(){
+  const grid=document.getElementById("profilesGrid");
+  if(!profiles.length){
+    grid.innerHTML=`<div class="col-span-full text-center py-16">
+      <div class="text-4xl mb-4">👤</div>
+      <div class="font-semibold mb-1">No profiles yet</div>
+      <div class="text-sm text-muted-foreground mb-4 font-mono">Create profiles for your squad members</div>
+      <button class="btn btn-primary gap-2" onclick="openAddProfile()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add First Profile
+      </button>
+    </div>`;
+    return;
+  }
+  grid.innerHTML=profiles.map(p=>{
+    const rc=ROLE_COLORS[p.preferredRole]||"rgba(255,255,255,.3)";
+    const role=(p.preferredRole||"any").toUpperCase();
+    const favChips=(p.favAgents||[]).map(a=>{
+      const rk=Object.keys(AGENTS).find(r=>AGENTS[r].find(ag=>ag.name===a));
+      const c=ROLE_COLORS[rk]||"#fff";
+      return`<span class="badge font-mono text-xs rounded-full px-2" style="color:${c};border-color:${c};background:${c}18">${a}</span>`;
+    }).join("");
+    return`<div class="card p-4 hover:border-white/15 transition-colors">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-full bg-muted border-2 flex items-center justify-center text-lg flex-shrink-0" style="border-color:${rc}">${p.emoji||"🎮"}</div>
+        <div class="flex-1 min-w-0">
+          <div class="font-display text-xl tracking-wider truncate">${esc(p.name)}</div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-mono text-xs" style="color:${rc}">${role}</span>
+            ${p.rank?`<span class="text-xs text-muted-foreground">🏅 ${p.rank}</span>`:""}
+          </div>
+        </div>
+        <div class="flex gap-1.5 flex-shrink-0">
+          <button class="btn btn-ghost btn-sm text-muted-foreground hover:text-foreground p-1.5" onclick="editProfile('${p.id}')" title="Edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </button>
+          <button class="btn btn-ghost btn-sm text-muted-foreground hover:text-val-red p-1.5" onclick="deleteProfile('${p.id}')" title="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+      </div>
+      ${favChips?`<div class="flex flex-wrap gap-1.5">${favChips}</div>`:'<div class="text-xs text-muted-foreground font-mono">No favourite agents set</div>'}
+    </div>`;
+  }).join("");
+}
+
+// ══════════════════════════════════
+// PROFILE MODAL
+// ══════════════════════════════════
+function openAddProfile(){
+  editingId=null;modalRole=null;modalFavs=[];modalEmoji="🎮";
+  document.getElementById("modalTitle").textContent="ADD PROFILE";
+  document.getElementById("mName").value="";
+  document.getElementById("mRank").value="";
+  updateEmojiDisplay();
+  renderModalRolePick();
+  renderModalFavs();
+  document.getElementById("profileModal").classList.remove("hidden");
+  document.getElementById("mName").focus();
+}
+
+function editProfile(id){
+  const p=profiles.find(x=>x.id===id);if(!p)return;
+  editingId=id;modalRole=p.preferredRole||null;modalFavs=[...(p.favAgents||[])];modalEmoji=p.emoji||"🎮";
+  document.getElementById("modalTitle").textContent="EDIT PROFILE";
+  document.getElementById("mName").value=p.name;
+  document.getElementById("mRank").value=p.rank||"";
+  updateEmojiDisplay();
+  renderModalRolePick();
+  renderModalFavs();
+  document.getElementById("profileModal").classList.remove("hidden");
+}
+
+function closeProfileModal(e){
+  if(e&&e.target!==document.getElementById("profileModal"))return;
+  document.getElementById("profileModal").classList.add("hidden");
+}
+
+function pickEmoji(el){
+  modalEmoji=el.dataset.e;
+  updateEmojiDisplay();
+  document.querySelectorAll("#emojiPicker span").forEach(s=>s.style.outline="none");
+  el.style.outline="2px solid #ff4655";el.style.outlineOffset="2px";el.style.borderRadius="4px";
+}
+
+function updateEmojiDisplay(){
+  document.getElementById("selectedEmoji").textContent=modalEmoji;
+}
+
+function setModalRole(role){
+  modalRole=role;
+  renderModalRolePick();
+}
+
+function renderModalRolePick(){
+  const rp=document.getElementById("mRolePick");
+  rp.querySelectorAll("button").forEach(btn=>{
+    const r=btn.dataset.role||null;
+    btn.className="rpb";
+    if(r===modalRole||(r===null&&!modalRole))btn.className="rpb sel-"+(r||"any");
+  });
+  rp.children[0].dataset.role="";
+  ["duelist","initiator","controller","sentinel"].forEach((r,i)=>{rp.children[i+1].dataset.role=r;});
+}
+
+function renderModalFavs(){
+  document.getElementById("mFavGrid").innerHTML=ALL_AGENTS.map(a=>{
+    const isFav=modalFavs.includes(a.name);
+    const role=Object.keys(AGENTS).find(r=>AGENTS[r].find(ag=>ag.name===a.name));
+    const c=ROLE_COLORS[role]||"#fff";
+    return`<button class="fab ${isFav?"fav":""}" onclick="toggleModalFav('${a.name}')" style="${isFav?"":"color:"+c}">${a.emoji} ${a.name}</button>`;
+  }).join("");
+}
+
+function toggleModalFav(name){
+  if(modalFavs.includes(name)){modalFavs=modalFavs.filter(a=>a!==name);}
+  else{if(modalFavs.length>=4){t("Max 4 favourite agents");return;}modalFavs.push(name);}
+  renderModalFavs();
+}
+
+function saveProfile(){
+  const name=document.getElementById("mName").value.trim();
+  if(!name){t("Please enter a name");return;}
+  if(!editingId&&profiles.find(p=>p.name.toLowerCase()===name.toLowerCase())){t("Profile name already exists");return;}
+  if(editingId){
+    const p=profiles.find(x=>x.id===editingId);
+    if(p){p.name=name;p.emoji=modalEmoji;p.rank=document.getElementById("mRank").value;p.preferredRole=modalRole;p.favAgents=[...modalFavs];}
+  } else {
+    profiles.push({id:Date.now().toString(),name,emoji:modalEmoji,rank:document.getElementById("mRank").value,preferredRole:modalRole,favAgents:[...modalFavs]});
+  }
+  save();
+  document.getElementById("profileModal").classList.add("hidden");
+  renderProfiles();
+  t(editingId?"Profile updated ✓":"Profile created ✓");
+}
+
+function deleteProfile(id){
+  if(!confirm("Delete this profile?"))return;
+  profiles=profiles.filter(p=>p.id!==id);save();renderProfiles();t("Profile deleted");
+}
+
+// ══════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════
+function renderSettings(){
+  draft={};MAPS.forEach(m=>{draft[m.name]=[...(combos[m.name]||DEFAULT_COMBOS[m.name])];});
+  document.getElementById("settingsList").innerHTML=MAPS.map(m=>buildMcfg(m)).join("");
+}
+
+function buildMcfg(m){
+  const roles=draft[m.name]||[];const ok=roles.length===5;
+  const slots=roles.map((r,i)=>`
+    <div class="slot-item rc-${r}">
+      <button class="slot-role rc-${r}" onclick="cycleSlot('${m.name}',${i})">${r.substring(0,4).toUpperCase()}</button>
+      <button class="slot-del" onclick="removeSlot('${m.name}',${i})">✕</button>
+    </div>`).join("");
+  return`<div class="card p-4 ${m.isNew?"border-val-gold/25":""}" id="mcfg-${m.name}">
+    <div class="flex items-center gap-3 mb-3 flex-wrap">
+      <span class="text-lg">${m.icon}</span>
+      <span class="font-display text-lg tracking-widest ${m.isNew?"text-val-gold":""}">${m.name}</span>
+      ${m.isNew?'<span class="badge badge-outline font-mono text-xs px-2 rounded" style="color:#c9a84c;border-color:rgba(201,168,76,.4)">NEW</span>':""}
+      ${m.src?`<span class="font-mono text-xs text-val-gold/70">⚡ ${m.src}</span>`:""}
+      <span class="ml-auto font-mono text-xs ${ok?"text-val-green":"text-val-amber"}">${roles.length}/5 ${ok?"✓":"⚠"}</span>
+    </div>
+    <div class="flex gap-2 flex-wrap items-center">${slots}${roles.length<5?`<button class="btn btn-ghost btn-sm font-mono text-xs border border-dashed border-border" onclick="addSlot('${m.name}')">＋ Add</button>`:""}</div>
+  </div>`;
+}
+
+function refreshMcfg(mn){
+  const tmp=document.createElement("div");tmp.innerHTML=buildMcfg(MAPS.find(x=>x.name===mn));
+  document.getElementById(`mcfg-${mn}`).replaceWith(tmp.firstElementChild);
+}
+function cycleSlot(mn,i){draft[mn][i]=ROLE_ORDER[(ROLE_ORDER.indexOf(draft[mn][i])+1)%ROLE_ORDER.length];refreshMcfg(mn);}
+function removeSlot(mn,i){draft[mn].splice(i,1);refreshMcfg(mn);}
+function addSlot(mn){if(draft[mn].length>=5){t("Already at 5 roles");return;}draft[mn].push("duelist");refreshMcfg(mn);}
+function saveSettings(){
+  const bad=MAPS.filter(m=>draft[m.name].length!==5);
+  if(bad.length){t(`Fix: ${bad.map(m=>m.name).join(", ")} need exactly 5`);return;}
+  MAPS.forEach(m=>{combos[m.name]=[...draft[m.name]];});
+  save();t("Settings saved ✓");setTimeout(()=>showView("play"),600);
+}
+function resetDefaults(){
+  MAPS.forEach(m=>{draft[m.name]=[...DEFAULT_COMBOS[m.name]];});
+  document.getElementById("settingsList").innerHTML=MAPS.map(m=>buildMcfg(m)).join("");
+  t("Defaults restored");
+}
+
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+load();
+renderPlayMaps();
+buildPlayerInputs();
+</script>
+</body>
+</html>
